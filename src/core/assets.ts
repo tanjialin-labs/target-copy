@@ -6,6 +6,7 @@ import { blobToDataUrl } from "./data-url";
 import { getElementSourcePath } from "./source-context";
 import { parseSrcset, serializeSrcset } from "./srcset";
 import { abortable } from "./cancellation";
+import { createDetachedEl } from "./dom-context";
 
 const MIME_TYPES: Record<string, string> = {
   avif: "image/avif",
@@ -36,7 +37,7 @@ export async function inlineLocalImages(
     const candidates = parseSrcset(element.getAttribute("srcset") || "");
     responsive.push({ element, candidates });
     for (const candidate of candidates) {
-      const image = root.ownerDocument.createElement("img");
+      const image = createDetachedEl(root.ownerDocument, "img");
       image.setAttribute("src", candidate.url);
       owners.set(image, element);
       commit.set(image, (url) => { candidate.url = url; });

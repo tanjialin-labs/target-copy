@@ -1,6 +1,6 @@
 import { App, Component, MarkdownRenderer } from "obsidian";
 
-import { getActiveDocument, getActiveWindow } from "./dom-context";
+import { createDetachedEl, getActiveDocument, getActiveWindow } from "./dom-context";
 import { waitForDomStability, type DomStabilityOptions } from "./dom-stability";
 import { abortable } from "./cancellation";
 
@@ -24,7 +24,7 @@ export async function renderMarkdown(
   component.load();
 
   const ownerDocument = getActiveDocument().implementation.createHTMLDocument("");
-  const root = ownerDocument.createElement("div");
+  const root = createDetachedEl(ownerDocument, "div");
   root.className = "target-copy-render-root markdown-rendered";
   root.setAttribute("aria-hidden", "true");
   ownerDocument.body.appendChild(root);

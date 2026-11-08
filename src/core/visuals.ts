@@ -1,6 +1,7 @@
 import { t } from "../i18n";
 import type { UiLanguage } from "../types";
 import { dataUrlByteLength } from "./data-url";
+import { createDetachedEl } from "./dom-context";
 
 export interface VisualProcessingResult {
   converted: number;
@@ -119,9 +120,9 @@ function createSourceBlock(
   language: string,
   ownerDocument: Document,
 ): HTMLPreElement {
-  const pre = ownerDocument.createElement("pre");
+  const pre = createDetachedEl(ownerDocument, "pre");
   pre.className = "target-copy-source-block";
-  const code = ownerDocument.createElement("code");
+  const code = createDetachedEl(ownerDocument, "code");
   code.className = `language-${language}`;
   code.textContent = source;
   pre.appendChild(code);
@@ -129,7 +130,7 @@ function createSourceBlock(
 }
 
 function replaceWithPlaceholder(element: Element, label: string): void {
-  const placeholder = element.ownerDocument.createElement("span");
+  const placeholder = createDetachedEl(element.ownerDocument, "span");
   placeholder.textContent = `[${label}]`;
   element.replaceWith(placeholder);
 }

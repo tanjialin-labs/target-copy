@@ -1,7 +1,7 @@
 {
   "id": "target-copy",
   "name": "Target Copy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.13.7",
   "description": "Copy notes and selections as rich text or source-preserving Markdown for Google Docs, Word, Notion, Slack, email, and WeChat. Processes everything locally.",
   "author": "Logan",

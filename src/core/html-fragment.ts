@@ -1,3 +1,5 @@
+import { createDetachedFragment } from "./dom-context";
+
 export function parseHtmlFragment(
   ownerDocument: Document,
   html: string,
@@ -10,7 +12,7 @@ export function parseHtmlFragment(
     `<span data-target-copy-parser-boundary></span>${html}`,
     "text/html",
   );
-  const fragment = ownerDocument.createDocumentFragment();
+  const fragment = createDetachedFragment(ownerDocument);
   for (const child of [...parsed.body.childNodes].slice(1)) {
     fragment.appendChild(ownerDocument.importNode(child, true));
   }

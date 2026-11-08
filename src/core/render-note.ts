@@ -4,7 +4,7 @@ import { isEscaped, sourceSegments } from "./source";
 import { parseHtmlFragment } from "./html-fragment";
 import { abortable, yieldForCancellation } from "./cancellation";
 import { collectReferenceDefinitions } from "./references";
-import { getActiveDocument } from "./dom-context";
+import { createDetachedEl, getActiveDocument } from "./dom-context";
 import { t } from "../i18n";
 import type { UiLanguage } from "../types";
 
@@ -82,7 +82,7 @@ export async function renderNote(
   let session: RenderSession;
   if (rendered) {
     const ownerDocument = getActiveDocument().implementation.createHTMLDocument("");
-    const root = ownerDocument.createElement("div");
+    const root = createDetachedEl(ownerDocument, "div");
     root.append(parseHtmlFragment(ownerDocument, rendered.html));
     session = { root, timedOut: rendered.timedOut, dispose: () => root.remove() };
   } else {

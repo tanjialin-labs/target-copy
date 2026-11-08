@@ -20,7 +20,7 @@ describe("writeClipboard", () => {
     vi.stubGlobal("navigator", { clipboard: { write, writeText } });
 
     await expect(writeClipboard({ html: "<b>Bold</b>", text: "Bold", warnings: [] }))
-      .resolves.toEqual({ richTextWritten: true, systemTextModeUsed: false });
+      .resolves.toEqual({ richTextWritten: true });
     expect(write).toHaveBeenCalledOnce();
     expect(writeText).not.toHaveBeenCalled();
   });
@@ -32,7 +32,7 @@ describe("writeClipboard", () => {
     vi.stubGlobal("navigator", { clipboard: { write, writeText } });
 
     await expect(writeClipboard({ html: "<b>Bold</b>", text: "Bold", warnings: [] }))
-      .resolves.toEqual({ richTextWritten: false, systemTextModeUsed: false });
+      .resolves.toEqual({ richTextWritten: false });
     expect(writeText).toHaveBeenCalledWith("Bold");
   });
 

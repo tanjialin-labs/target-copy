@@ -1,6 +1,7 @@
 import { normalizeFootnotes } from "./footnotes";
 import { parseSrcset } from "./srcset";
 import type { ConversionContext } from "../types";
+import { createDetachedEl } from "./dom-context";
 
 const REMOVE_SELECTORS = [
   "script",
@@ -78,7 +79,7 @@ function restoreTextImageReferences(
 function normalizeTags(root: HTMLElement): void {
   const ownerDocument = root.ownerDocument;
   root.querySelectorAll<HTMLAnchorElement>("a.tag").forEach((link) => {
-    const text = ownerDocument.createElement("span");
+    const text = createDetachedEl(ownerDocument, "span");
     text.textContent = link.textContent || link.dataset.tag || "";
     link.replaceWith(text);
   });
@@ -117,11 +118,11 @@ function normalizeCallouts(root: HTMLElement): void {
     const contentElement = callout.querySelector<HTMLElement>(".callout-content");
     const type = callout.dataset.callout || "note";
 
-    const replacement = ownerDocument.createElement("div");
+    const replacement = createDetachedEl(ownerDocument, "div");
     replacement.className = "target-copy-callout";
     replacement.dataset.callout = type;
 
-    const title = ownerDocument.createElement("p");
+    const title = createDetachedEl(ownerDocument, "p");
     title.className = "target-copy-callout-title";
     const titleContent = titleElement?.querySelector(".callout-title-inner") || titleElement;
     if (titleContent) {
@@ -130,7 +131,7 @@ function normalizeCallouts(root: HTMLElement): void {
     } else title.textContent = capitalize(type);
     replacement.appendChild(title);
 
-    const content = ownerDocument.createElement("div");
+    const content = createDetachedEl(ownerDocument, "div");
     content.className = "target-copy-callout-content";
     if (contentElement) {
       while (contentElement.firstChild) {
@@ -145,7 +146,7 @@ function normalizeCallouts(root: HTMLElement): void {
 function normalizeCheckboxes(root: HTMLElement): void {
   const ownerDocument = root.ownerDocument;
   root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((checkbox) => {
-    const marker = ownerDocument.createElement("span");
+    const marker = createDetachedEl(ownerDocument, "span");
     marker.dataset.taskChecked = String(checkbox.checked);
     marker.textContent = checkbox.checked ? "☑ " : "☐ ";
     marker.setAttribute("aria-label", checkbox.checked ? "Completed" : "Not completed");
@@ -159,7 +160,7 @@ function normalizeInternalLinks(root: HTMLElement, context: ConversionContext): 
     const target = link.dataset.href || link.getAttribute("href") || "";
     const label = link.textContent?.trim() || target;
     if (context.settings.internalLinkMode === "source") {
-      const source = ownerDocument.createElement("span");
+      const source = createDetachedEl(ownerDocument, "span");
       source.textContent = label && label !== target
         ? `[[${target}|${label}]]`
         : `[[${target}]]`;
@@ -180,7 +181,7 @@ function normalizeInternalLinks(root: HTMLElement, context: ConversionContext): 
       return;
     }
 
-    const text = ownerDocument.createElement("span");
+    const text = createDetachedEl(ownerDocument, "span");
     text.textContent = link.textContent || link.dataset.href || "Internal link";
     link.replaceWith(text);
   });
@@ -234,9 +235,9 @@ function isSafeUrl(element: HTMLElement, attribute: string): boolean {
 function replaceWithVisibleSource(element: HTMLElement): void {
   element = (element.closest("svg") as HTMLElement | null) || element;
   const ownerDocument = element.ownerDocument;
-  const pre = ownerDocument.createElement("pre");
+  const pre = createDetachedEl(ownerDocument, "pre");
   pre.className = "target-copy-source-block";
-  const code = ownerDocument.createElement("code");
+  const code = createDetachedEl(ownerDocument, "code");
   code.className = "language-html";
   code.textContent = element.outerHTML;
   pre.appendChild(code);

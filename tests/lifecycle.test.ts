@@ -58,30 +58,18 @@ describe("conversion lifetime", () => {
 });
 
 describe("clipboard recovery", () => {
-  it("keeps both clipboard representations when the async rich API is unavailable", async () => {
+  it("falls back to plain text when the async rich API is unavailable", async () => {
     vi.spyOn(navigator.clipboard, "write").mockRejectedValue(new Error("Document is not focused"));
-    const data = new DataTransfer();
-    Object.defineProperty(document, "execCommand", { configurable: true, value: vi.fn(() => {
-      document.dispatchEvent(new ClipboardEvent("copy", { clipboardData: data, cancelable: true }));
-      return true;
-    }) });
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
     const result = await writeClipboard({ text: "Exact text", html: "<p><strong>Exact text</strong></p>", warnings: [] });
-    expect(result.richTextWritten).toBe(true);
-    expect(data.getData("text/plain")).toBe("Exact text");
-    expect(data.getData("text/html")).toBe("<p><strong>Exact text</strong></p>");
+    expect(result.richTextWritten).toBe(false);
+    expect(writeText).toHaveBeenCalledWith("Exact text");
   });
 
-  it("uses the document bridge on async rejection and restores focus and selection", async () => {
-    const input = document.createElement("input");
-    document.body.append(input);
-    input.focus();
+  it("reports clipboard denial instead of using a deprecated document fallback", async () => {
     vi.spyOn(navigator.clipboard, "writeText").mockRejectedValue(new Error("Denied"));
-    Object.defineProperty(document, "execCommand", { configurable: true, value: vi.fn(() => true) });
-    const result = await writeClipboard({ text: "Exact source", warnings: [] });
-    expect(result.systemTextModeUsed).toBe(true);
-    expect(document.activeElement).toBe(input);
-    expect(document.querySelector("textarea.target-copy-clipboard-bridge")).toBeNull();
-    input.remove();
+    await expect(writeClipboard({ text: "Exact source", warnings: [] }))
+      .rejects.toThrow("Target Copy could not access the system clipboard.");
   });
 });
 

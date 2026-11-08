@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 - 2026-11-08
+
+- Improved compatibility across Obsidian windows and desktop clipboard handoff.
+
 ## 1.0.0 - 2026-11-04
 
 - Added destination-aware copying for Google Docs, Microsoft Word and WPS,

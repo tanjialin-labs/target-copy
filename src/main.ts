@@ -308,9 +308,6 @@ export default class TargetCopyPlugin extends Plugin {
       if (result.html && !clipboardResult.richTextWritten) {
         result.warnings.push(t(language, "textRepresentation"));
       }
-      if (clipboardResult.systemTextModeUsed) {
-        result.warnings.push(t(language, "systemTextMode"));
-      }
       this.settings.lastTarget = targetId;
       this.lastCopyDetails = { target: targetId, isSelection: input.isSelection, warnings: [...result.warnings] };
       const details = this.lastCopyDetails;

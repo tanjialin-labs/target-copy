@@ -6,4 +6,5 @@ export default defineConfig({
     obsidian: fileURLToPath(new URL("./tests/obsidian.ts", import.meta.url)),
     electron: fileURLToPath(new URL("./tests/electron.ts", import.meta.url)),
   } },
+  test: { setupFiles: ["./tests/setup.ts"] },
 });

@@ -41,7 +41,7 @@ Google Docs、Microsoft Word / WPS、Notion、Slack、電子郵件、微信公�
 3. 將 main.js、manifest.json、styles.css 放入該資料夾。
 4. 重新載入 Obsidian，並在「設定 → 第三方外掛」中啟用 Target Copy。
 
-版本 1.0.0 面向 Obsidian 桌面端。外掛保留 YAML、註解、連結、公式、
+版本 1.0.1 面向 Obsidian 桌面端。外掛保留 YAML、註解、連結、公式、
 所有程式碼區塊、SVG/Canvas 標記與原始圖片資料，並依照目標應用程式調整外層格式。
 雙向連結預設轉換為可點擊的 Obsidian 連結，也可在設定中保留 `[[原始語法]]`
 或只顯示連結名稱。

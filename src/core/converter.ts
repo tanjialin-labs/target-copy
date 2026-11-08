@@ -15,7 +15,7 @@ import {
   restorePreservedCodeLanguages,
 } from "./diagrams";
 import { normalizeRenderedDom, normalizeResponsiveImages } from "./dom";
-import { getActiveDocument } from "./dom-context";
+import { createDetachedEl, getActiveDocument } from "./dom-context";
 import { parseHtmlFragment } from "./html-fragment";
 import { createInternalLinkResolver } from "./internal-links";
 import {
@@ -93,7 +93,7 @@ export class TargetConverter {
 
     try {
       if (input.sourceFormat === "html" && !input.isSelection && settings.includeTitle && input.title) {
-        const heading = renderSession.root.ownerDocument.createElement("h1");
+        const heading = createDetachedEl(renderSession.root.ownerDocument, "h1");
         heading.textContent = input.title;
         renderSession.root.prepend(heading);
       }
@@ -152,7 +152,7 @@ export class TargetConverter {
 
 function createRenderedSelection(html: string): { root: HTMLElement; dispose: () => void; timedOut?: boolean } {
   const ownerDocument = getActiveDocument().implementation.createHTMLDocument("");
-  const root = ownerDocument.createElement("div");
+  const root = createDetachedEl(ownerDocument, "div");
   root.className = "target-copy-render-root markdown-rendered";
   root.appendChild(parseHtmlFragment(ownerDocument, html));
   return { root, dispose: () => undefined };

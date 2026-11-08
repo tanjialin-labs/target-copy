@@ -1,4 +1,5 @@
 import { stripPluginAttributes } from "../core/dom";
+import { createDetachedEl, createDetachedFragment } from "../core/dom-context";
 import { formatTable } from "./text";
 
 export type RichTarget =
@@ -142,16 +143,16 @@ export function buildRichHtml(
 
 function prepareSlackRoot(root: HTMLElement): void {
   root.querySelectorAll<HTMLElement>("table").forEach((table) => {
-    const pre = table.ownerDocument.createElement("pre");
+    const pre = createDetachedEl(table.ownerDocument, "pre");
     pre.className = "target-copy-slack-table";
-    const code = table.ownerDocument.createElement("code");
+    const code = createDetachedEl(table.ownerDocument, "code");
     code.textContent = formatTable(table);
     pre.appendChild(code);
     table.replaceWith(pre);
   });
 
   root.querySelectorAll<HTMLElement>(".target-copy-callout").forEach((callout) => {
-    const quote = callout.ownerDocument.createElement("blockquote");
+    const quote = createDetachedEl(callout.ownerDocument, "blockquote");
     quote.className = callout.className;
     for (const attribute of [...callout.attributes]) {
       if (attribute.name !== "class" && attribute.name !== "style") {
@@ -290,7 +291,7 @@ function prepareGoogleDocsRoot(root: HTMLElement): void {
 function createGoogleDocsCodeSource(pre: HTMLElement): HTMLElement {
   const ownerDocument = pre.ownerDocument;
   const code = pre.querySelector<HTMLElement>(":scope > code") ?? pre;
-  const source = ownerDocument.createElement("p");
+  const source = createDetachedEl(ownerDocument, "p");
   source.className = "target-copy-gdocs-code-source";
 
   const languageClass = [...code.classList].find((name) =>
@@ -318,17 +319,17 @@ function trimRenderedCodeTerminator(root: HTMLElement): void {
 function materializeCodeLineBreaks(root: HTMLElement): void {
   for (const textNode of collectTextNodes(root)) {
     const value = textNode.textContent || "";
-    const fragment = root.ownerDocument.createDocumentFragment();
+    const fragment = createDetachedFragment(root.ownerDocument);
     const lines = value.split("\n");
     lines.forEach((line, index) => {
       if (line) {
-        const span = root.ownerDocument.createElement("span");
+        const span = createDetachedEl(root.ownerDocument, "span");
         applyStyle(span, { "white-space": "pre-wrap" });
         appendRawStyle(span, "mso-spacerun:yes");
         span.textContent = line;
         fragment.appendChild(span);
       }
-      if (index < lines.length - 1) fragment.appendChild(root.ownerDocument.createElement("br"));
+      if (index < lines.length - 1) fragment.appendChild(createDetachedEl(root.ownerDocument, "br"));
     });
     textNode.replaceWith(fragment);
   }
@@ -351,11 +352,11 @@ function wrapGoogleDocsBlock(
   kind: "code" | "callout" | "quote",
 ): void {
   const ownerDocument = element.ownerDocument;
-  const table = ownerDocument.createElement("table");
+  const table = createDetachedEl(ownerDocument, "table");
   table.className = `target-copy-gdocs-block target-copy-gdocs-${kind}`;
-  const body = ownerDocument.createElement("tbody");
-  const row = ownerDocument.createElement("tr");
-  const cell = ownerDocument.createElement("td");
+  const body = createDetachedEl(ownerDocument, "tbody");
+  const row = createDetachedEl(ownerDocument, "tr");
+  const cell = createDetachedEl(ownerDocument, "td");
   element.replaceWith(table);
   cell.appendChild(element);
   row.appendChild(cell);
@@ -371,7 +372,7 @@ function applyGoogleDocsStyles(root: HTMLElement): void {
         paragraph = undefined;
       } else if (paragraph || child.textContent?.trim() || child.nodeType === 1) {
         if (!paragraph) {
-          paragraph = cell.ownerDocument.createElement("p");
+          paragraph = createDetachedEl(cell.ownerDocument, "p");
           cell.insertBefore(paragraph, child);
         }
         paragraph.appendChild(child);
@@ -470,7 +471,7 @@ function clearSourcePresentation(root: HTMLElement): void {
 }
 
 function prepareWeChatRoot(source: HTMLElement): HTMLElement {
-  const root = source.ownerDocument.createElement("section");
+  const root = createDetachedEl(source.ownerDocument, "section");
   while (source.firstChild) root.appendChild(source.firstChild);
   return root;
 }

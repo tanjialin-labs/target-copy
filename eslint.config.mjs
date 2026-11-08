@@ -11,11 +11,6 @@ export default defineConfig([
   ]),
   ...obsidianmd.configs.recommended,
   {
-    files: ["src/core/**/*.ts", "src/adapters/**/*.ts"],
-    // Export DOM belongs to an inert document, which has no browsing window.
-    rules: { "obsidianmd/prefer-create-el": "off" },
-  },
-  {
     languageOptions: {
       parserOptions: {
         projectService: {

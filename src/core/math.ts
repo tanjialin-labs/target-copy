@@ -1,6 +1,7 @@
 import { sourceSegments } from "./source";
 import { t } from "../i18n";
 import type { UiLanguage } from "../types";
+import { createDetachedEl } from "./dom-context";
 
 export function preserveLatexForRendering(markdown: string): string {
   return sourceSegments(markdown).map((segment) => segment.kind === "math" ? preserveLatexInProse(segment.value, /^[ \t>]*$/.test(segment.prefix || "")) : segment.value).join("");
@@ -49,12 +50,12 @@ export function replaceRenderedMathWithLatex(
       element.getAttribute("display") === "block";
     const ownerDocument = element.ownerDocument;
     const replacement = block
-      ? ownerDocument.createElement("pre")
-      : ownerDocument.createElement("code");
+      ? createDetachedEl(ownerDocument, "pre")
+      : createDetachedEl(ownerDocument, "code");
 
     if (block) {
       replacement.className = "target-copy-latex-block";
-      const code = ownerDocument.createElement("code");
+      const code = createDetachedEl(ownerDocument, "code");
       code.className = "language-latex";
       code.textContent = source ? `$$${source}$$` : t(language, "latexUnavailableLabel");
       replacement.appendChild(code);
@@ -87,11 +88,11 @@ function writeInlineLatexSource(element: HTMLElement, source: string): void {
   }
 
   const ownerDocument = element.ownerDocument;
-  const opening = ownerDocument.createElement("span");
-  const leadingBreak = ownerDocument.createElement("wbr");
-  const content = ownerDocument.createElement("span");
-  const trailingBreak = ownerDocument.createElement("wbr");
-  const closing = ownerDocument.createElement("span");
+  const opening = createDetachedEl(ownerDocument, "span");
+  const leadingBreak = createDetachedEl(ownerDocument, "wbr");
+  const content = createDetachedEl(ownerDocument, "span");
+  const trailingBreak = createDetachedEl(ownerDocument, "wbr");
+  const closing = createDetachedEl(ownerDocument, "span");
   const delimiter = source.startsWith("$$") && source.endsWith("$$") ? "$$" : "$";
   opening.textContent = delimiter;
   content.textContent = source.slice(delimiter.length, -delimiter.length);

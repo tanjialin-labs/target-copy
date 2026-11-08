@@ -1,3 +1,5 @@
+import { createDetachedEl } from "./dom-context";
+
 const REFERENCES = "sup.footnote-ref, sup[data-footnote-ref], sup:has(.footnote-link), a.footnote-link, a[data-footnote-ref]";
 
 export function normalizeFootnotes(root: HTMLElement): void {
@@ -28,7 +30,7 @@ export function normalizeFootnotes(root: HTMLElement): void {
     const label = reference.textContent?.trim().replace(/^\[|\]$/g, "") || String(next);
     const number = definition ? numbers.get(definition) || String(next++) : label;
     if (definition) numbers.set(definition, number);
-    const portable = root.ownerDocument.createElement("sup");
+    const portable = createDetachedEl(root.ownerDocument, "sup");
     portable.className = "target-copy-footnote-ref";
     portable.dataset.footnoteNumber = number;
     portable.dataset.footnoteResolved = String(Boolean(definition));
@@ -45,7 +47,7 @@ export function normalizeFootnotes(root: HTMLElement): void {
     }
   }
   for (const ref of root.querySelectorAll<HTMLElement>('.target-copy-footnote-ref[data-footnote-resolved="true"]')) {
-    const anchor = root.ownerDocument.createElement("a");
+    const anchor = createDetachedEl(root.ownerDocument, "a");
     anchor.setAttribute("href", `#target-copy-footnote-${ref.dataset.footnoteNumber}`);
     anchor.textContent = ref.textContent;
     ref.replaceChildren(anchor);

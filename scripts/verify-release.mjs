@@ -13,6 +13,7 @@ const requiredFiles = [
   "docs/ARCHITECTURE.md",
   "docs/DEPENDENCIES.md",
   ".github/workflows/ci.yml",
+  ".github/workflows/attest-release.yml",
   "main.js",
   "manifest.json",
   "package-lock.json",

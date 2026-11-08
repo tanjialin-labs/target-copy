@@ -1,3 +1,5 @@
+import { createDetachedEl, createDetachedFragment } from "./dom-context";
+
 interface EditorPositionLike {
   line: number;
   ch: number;
@@ -34,7 +36,7 @@ export function getReadingViewSelection(container: HTMLElement): string | null {
   const selection = ownerDocument.getSelection();
   if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
 
-  const wrapper = ownerDocument.createElement("div");
+  const wrapper = createDetachedEl(ownerDocument, "div");
   for (let index = 0; index < selection.rangeCount; index += 1) {
     const range = selection.getRangeAt(index);
     const commonAncestor = range.commonAncestorContainer.nodeType === 1
@@ -94,7 +96,7 @@ function rebuildSelectionContext(
     current = current.parentElement;
   }
 
-  const fragment = ownerDocument.createDocumentFragment();
+  const fragment = createDetachedFragment(ownerDocument);
   fragment.appendChild(content);
   const selectedLists = [...container.querySelectorAll<HTMLElement>("ol")]
     .filter((list) => range.intersectsNode(list));
@@ -168,9 +170,9 @@ function appendSelectedFootnotes(wrapper: HTMLElement, container: HTMLElement): 
       candidate.id === id && sourceScope(candidate) === scopePath);
     if (!item || [...wrapper.querySelectorAll("li[id]")].some((candidate) => candidate.id === id && sourceScope(candidate) === scopePath)) continue;
     added.add(key);
-    const section = wrapper.ownerDocument.createElement("section");
+    const section = createDetachedEl(wrapper.ownerDocument, "section");
     section.className = "footnotes";
-    const list = wrapper.ownerDocument.createElement("ol");
+    const list = createDetachedEl(wrapper.ownerDocument, "ol");
     list.appendChild(item.cloneNode(true));
     section.appendChild(list);
     (ref.closest(".internal-embed, .markdown-embed, [data-embed-path]") || wrapper).appendChild(section);
