@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a destination, compatibility improvement, or workflow.
+title: "[Feature] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the desired copy or paste outcome and the current workflow.
+    validations:
+      required: true
+  - type: textarea
+    id: destination
+    attributes:
+      label: Destination behavior
+      description: Explain what the destination accepts and how you verified it.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Source and privacy
+      options:
+        - label: This proposal keeps conversion local and uses the clipboard as output.
+          required: true
+        - label: This proposal preserves user content by default or makes transformations opt-in.
+          required: true

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <rect width="640" height="240" rx="24" fill="#f3fbf6"/>
+  <rect x="40" y="40" width="560" height="160" rx="16" fill="#ffffff" stroke="#07c160" stroke-width="4"/>
+  <text x="320" y="112" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-weight="700" fill="#1f1f1f">Target Copy</text>
+  <text x="320" y="156" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#576b95">Local image fixture</text>
+</svg>

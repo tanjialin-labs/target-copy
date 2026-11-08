@@ -1,0 +1,17 @@
+node_modules/
+main.js
+*.map
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+.idea/
+.vscode/
+.obsidian/
+.cache/
+.tmp/
+dist/
+build/
+coverage/
+target-copy-*.zip
