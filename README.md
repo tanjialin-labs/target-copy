@@ -8,6 +8,9 @@ will be pasted. Every conversion runs locally inside Obsidian.
 
 > Target Copy 1.0.1 is the current open-source desktop release.
 
+Read the [Target Copy product story (Chinese)](https://blog.tanjialin.com/posts/68421)
+for its design intent and a closer look at the workflow.
+
 ## Why destination-aware copying?
 
 Google Docs, Microsoft Word, Slack, and email clients interpret clipboard data

@@ -6,6 +6,9 @@
 Target Copy は、貼り付け先に合わせて Obsidian のノートや選択範囲をコピーします。
 変換はすべて Obsidian 内でローカルに行われます。
 
+設計の背景と利用シーンは、[Target Copy のプロダクトストーリー（中国語）](https://blog.tanjialin.com/posts/68421)
+で紹介しています。
+
 ## 対応する貼り付け先
 
 Google Docs、Microsoft Word / WPS、Notion、Slack、メール、WeChat 公式アカウント、

@@ -6,6 +6,9 @@
 Target Copy 會依照「準備貼到哪裡」產生不同的剪貼簿內容。所有轉換均在
 Obsidian 本機完成。
 
+想了解它的設計初衷與使用情境，可閱讀
+[Target Copy 的產品故事（簡體中文）](https://blog.tanjialin.com/posts/68421)。
+
 ## 支援的貼上目標
 
 Google Docs、Microsoft Word / WPS、Notion、Slack、電子郵件、微信公眾號、

@@ -6,6 +6,9 @@
 Target Copy kopiert eine Obsidian-Auswahl oder Notiz in einem Format, das zum
 gewählten Ziel passt. Die Umwandlung erfolgt vollständig lokal in Obsidian.
 
+Die Entstehung und den Einsatzkontext beschreibt die
+[Produktgeschichte zu Target Copy (Chinesisch)](https://blog.tanjialin.com/posts/68421).
+
 ## Unterstützte Ziele
 
 Google Docs, Microsoft Word / WPS, Notion, Slack, E-Mail, WeChat Official
