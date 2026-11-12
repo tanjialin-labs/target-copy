@@ -44,6 +44,7 @@ describe("settings normalization", () => {
     const settings = normalizeSettings(null);
     expect(settings.enabledTargets).toEqual(DEFAULT_SETTINGS.enabledTargets);
     expect(settings.language).toBe("system");
+    expect(settings.lastTarget).toBeNull();
     expect(settings.maxImageSizeMb).toBe(0);
     expect(settings.maxTotalImageSizeMb).toBe(0);
     expect(settings.stripFrontmatter).toBe(false);

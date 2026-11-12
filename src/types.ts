@@ -22,7 +22,7 @@ export interface TargetCopySettings {
   language: LanguagePreference;
   enabledTargets: TargetId[];
   defaultTarget: TargetId;
-  lastTarget: TargetId;
+  lastTarget: TargetId | null;
   targetOrder: TargetId[];
   targetPreferences: Partial<Record<TargetId, TargetPreferences>>;
   includeTitle: boolean;
@@ -114,7 +114,7 @@ export const DEFAULT_SETTINGS: TargetCopySettings = {
   language: "system",
   enabledTargets: TARGET_IDS.filter((target) => target !== "original-source" && target !== "html-source"),
   defaultTarget: "google-docs",
-  lastTarget: "google-docs",
+  lastTarget: null,
   targetOrder: [...TARGET_IDS],
   targetPreferences: {},
   includeTitle: false,
@@ -162,7 +162,7 @@ export function normalizeSettings(value: unknown): TargetCopySettings {
   const lastTarget =
     isTargetId(loaded.lastTarget) && enabledTargets.includes(loaded.lastTarget)
       ? loaded.lastTarget
-      : defaultTarget;
+      : null;
   const maxImageSizeMb = validNumber(
     loaded.maxImageSizeMb,
     0,

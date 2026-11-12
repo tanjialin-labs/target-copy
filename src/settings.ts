@@ -1,160 +1,187 @@
-import { App, Notice, PluginSettingTab, type SettingDefinitionItem } from "obsidian";
+import { App, Notice, PluginSettingTab, type SettingDefinitionItem, type SettingGroupItem } from "obsidian";
 import { t, targetText } from "./i18n";
 import type TargetCopyPlugin from "./main";
-import { TARGETS, getTarget, isTargetId, normalizeSettings, type TargetCopySettings } from "./types";
+import { getTarget, normalizeSettings, type TargetCopySettings, type TargetId, type TargetPreferences, type UiLanguage } from "./types";
+
+type LimitKey = "maxImageSizeMb" | "maxTotalImageSizeMb" | "maxEmbedCount" | "maxEmbedDepth";
+type LabelKey = Parameters<typeof t>[1];
 
 export class TargetCopySettingTab extends PluginSettingTab {
+  private reordering = false;
+  private expandedTarget: TargetId | null = null;
+
   constructor(app: App, private readonly plugin: TargetCopyPlugin) {
     super(app, plugin);
   }
 
   getControlValue(key: string): unknown {
-    if (key.startsWith("preference:")) {
-      const [, target, field] = key.split(":");
-      if (!target || !isTargetId(target)) return "inherit";
-      const values = this.plugin.settings.targetPreferences[target];
-      if (field === "internalLinkMode") return values?.internalLinkMode ?? "inherit";
-      const value = field === "includeTitle" ? values?.includeTitle : values?.embedLocalImages;
-      return value === undefined ? "inherit" : value ? "enabled" : "disabled";
-    }
-    if (key.startsWith("target:")) {
-      const target = key.slice(7);
-      return isTargetId(target) && this.plugin.settings.enabledTargets.includes(target);
-    }
     return this.plugin.settings[key as keyof TargetCopySettings];
   }
 
   async setControlValue(key: string, value: unknown): Promise<void> {
-    const previous = this.plugin.settings;
-    if (key.startsWith("preference:")) {
-      const [, target, field] = key.split(":");
-      if (!target || !isTargetId(target) || !field || !["includeTitle", "embedLocalImages", "internalLinkMode"].includes(field)) return;
-      const preference: Record<string, unknown> = { ...previous.targetPreferences[target] };
-      if (value === "inherit") delete preference[field];
-      else preference[field] = field === "internalLinkMode" ? value : value === "enabled";
-      this.plugin.settings = normalizeSettings({ ...previous, targetPreferences: { ...previous.targetPreferences, [target]: preference } });
-    } else if (key.startsWith("target:")) {
-      const target = key.slice(7);
-      if (!isTargetId(target) || typeof value !== "boolean") return;
-      if (!value && previous.enabledTargets.length === 1 && previous.enabledTargets.includes(target)) {
-        new Notice(t(this.plugin.getUiLanguage(), "atLeastOne"));
-        this.update();
-        return;
-      }
-      this.plugin.settings = normalizeSettings({ ...previous,
-        enabledTargets: TARGETS.filter((item) => item.id === target ? value : previous.enabledTargets.includes(item.id)).map((item) => item.id),
-      });
-    } else {
-      this.plugin.settings = normalizeSettings({ ...previous, [key]: value });
-    }
+    this.plugin.settings = normalizeSettings({ ...this.plugin.settings, [key]: value });
     await this.plugin.saveSettings();
-    if (key === "language" || key.startsWith("target:")) {
+    if (key === "language" || key === "targetOrder" || key === "enabledTargets") {
       this.plugin.refreshUserInterface();
-      this.update();
     }
+    this.update();
   }
 
   getSettingDefinitions(): SettingDefinitionItem[] {
-    const language = this.plugin.getUiLanguage();
-    const toggle = (key: keyof TargetCopySettings, name: Parameters<typeof t>[1], desc: Parameters<typeof t>[1]): SettingDefinitionItem => ({
-      name: t(language, name), desc: t(language, desc), control: { type: "toggle", key },
+    const lang = this.plugin.getUiLanguage();
+    const msg = (key: LabelKey) => t(lang, key);
+    const toggle = (key: keyof TargetCopySettings, name: LabelKey, desc: LabelKey): SettingGroupItem => ({
+      name: msg(name), desc: msg(desc), control: { type: "toggle", key },
     });
+    const targets = this.plugin.settings.targetOrder;
     return [
-      { name: t(language, "settingsTitle"), desc: t(language, "privacy") },
-      {
-        name: t(language, "language"), desc: t(language, "languageDesc"),
-        control: { type: "dropdown", key: "language", options: {
-          system: t(language, "languageSystem"), en: "English", "zh-CN": "简体中文",
-          "zh-TW": "繁體中文", ja: "日本語", de: "Deutsch",
-        } },
-      },
-      {
-        type: "group", heading: t(language, "destinations"), cls: "target-copy-settings",
-        items: [
-          { name: t(language, "destinations"), desc: t(language, "destinationsDesc") },
-          ...TARGETS.map((target) => ({
-            name: targetText(language, target.id).label,
-            desc: targetText(language, target.id).description,
-            control: { type: "toggle" as const, key: `target:${target.id}`,
-              disabled: () => this.plugin.settings.enabledTargets.length === 1 && this.plugin.isTargetEnabled(target.id),
-            },
-          })),
-        ],
-      },
-      {
-        name: t(language, "defaultDestination"), desc: t(language, "defaultDestinationDesc"),
+      { name: msg("defaultDestination"), desc: msg("defaultDestinationDesc"),
         control: { type: "dropdown", key: "defaultTarget", options: Object.fromEntries(
-          this.plugin.getEnabledTargets().map((target) => [target.id, targetText(language, target.id).label]),
+          this.plugin.getEnabledTargets().map(({ id }) => [id, targetText(lang, id).label]),
         ) },
       },
-      toggle("includeTitle", "includeTitle", "includeTitleDesc"),
-      toggle("stripFrontmatter", "removeFrontmatter", "removeFrontmatterDesc"),
-      toggle("stripComments", "removeComments", "removeCommentsDesc"),
-      {
-        name: t(language, "internalLinks"), desc: t(language, "internalLinksDesc"),
-        control: { type: "dropdown", key: "internalLinkMode", options: {
-          source: t(language, "preserveSource"), text: t(language, "visibleText"), markdown: t(language, "portableLink"),
+      { type: "group", heading: msg("destinations"), cls: "target-copy-settings", items: [
+        { name: msg("destinationOrder"), desc: msg("destinationsDesc"), render: row => {
+          row.addButton(button => button.setButtonText(msg(this.reordering ? "done" : "reorder")).onClick(() => {
+            this.reordering = !this.reordering;
+            this.update();
+          }));
         } },
-      },
-      toggle("embedLocalImages", "embedImages", "embedImagesDesc"),
-      {
-        name: `${t(language, "maxImage")} (MB)`, desc: t(language, "maxImageDesc"),
-        control: { type: "number", key: "maxImageSizeMb", min: 0, max: 500, step: 1 },
-      },
-      {
-        name: `${t(language, "maxTotalImages")} (MB)`, desc: t(language, "maxTotalImagesDesc"),
-        control: { type: "number", key: "maxTotalImageSizeMb", min: 0, max: 2000, step: 1 },
-      },
+        ...targets.flatMap(id => this.destinationRows(id, lang)),
+      ] },
+      { type: "group", heading: msg("copyContent"), items: [
+        toggle("includeTitle", "includeTitle", "includeTitleDesc"),
+        toggle("stripFrontmatter", "removeFrontmatter", "removeFrontmatterDesc"),
+        toggle("stripComments", "removeComments", "removeCommentsDesc"),
+        { name: msg("internalLinks"), desc: msg("internalLinksDesc"),
+          control: { type: "dropdown", key: "internalLinkMode", options: this.linkOptions(lang) } },
+        toggle("embedLocalImages", "embedImages", "embedImagesDesc"),
+      ] },
       toggle("showNotices", "showNotices", "showNoticesDesc"),
       toggle("showCompatibilityNotices", "showCompatibilityNotices", "showCompatibilityNoticesDesc"),
-      {
-        type: "page", name: t(language, "advancedSettings"), desc: t(language, "advancedSettingsDesc"),
-        items: [
-          {
-            type: "page", name: t(language, "destinationOrder"), desc: t(language, "destinationOrderDesc"),
-            items: this.plugin.getEnabledTargets().map((target, index, targets) => ({
-              name: targetText(language, target.id).label,
-              render: (setting) => {
-                const move = async (offset: number) => {
-                  const other = targets[index + offset];
-                  if (!other) return;
-                  const order = [...this.plugin.settings.targetOrder];
-                  const left = order.indexOf(target.id), right = order.indexOf(other.id);
-                  [order[left], order[right]] = [order[right]!, order[left]!];
-                  this.plugin.settings = { ...this.plugin.settings, targetOrder: order };
-                  await this.plugin.saveSettings();
-                  this.plugin.refreshUserInterface();
-                  this.update();
-                };
-                setting.addExtraButton((button) => button.setIcon("arrow-up").setTooltip(t(language, "moveUp"))
-                  .setDisabled(index === 0).onClick(() => { void move(-1); }));
-                setting.addExtraButton((button) => button.setIcon("arrow-down").setTooltip(t(language, "moveDown"))
-                  .setDisabled(index === targets.length - 1).onClick(() => { void move(1); }));
-              },
-            })),
-          },
-          {
-            type: "page", name: t(language, "destinationPreferences"), desc: t(language, "destinationPreferencesDesc"),
-            items: this.plugin.getEnabledTargets().filter((target) => target.id !== "original-source").map((target) => {
-              const booleanOptions = { inherit: t(language, "inheritSetting"), enabled: t(language, "enabledOption"), disabled: t(language, "disabledOption") };
-              const items: SettingDefinitionItem[] = [
-                { name: t(language, "includeTitle"), control: { type: "dropdown", key: `preference:${target.id}:includeTitle`, options: booleanOptions } },
-                { name: t(language, "internalLinks"), control: { type: "dropdown", key: `preference:${target.id}:internalLinkMode`, options: {
-                  inherit: t(language, "inheritSetting"), source: t(language, "preserveSource"), text: t(language, "visibleText"), markdown: t(language, "portableLink"),
-                } } },
-              ];
-              if (getTarget(target.id).richText || target.id === "html-source") items.push({ name: t(language, "embedImages"), control: { type: "dropdown", key: `preference:${target.id}:embedLocalImages`, options: booleanOptions } });
-              return { type: "page", name: targetText(language, target.id).label, items };
-            }),
-          },
-          {
-            type: "group", heading: t(language, "embedLimits"), items: [
-              { name: t(language, "maxEmbedCount"), desc: t(language, "embedLimitDesc"), control: { type: "number", key: "maxEmbedCount", min: 0, max: 100000, step: 1 } },
-              { name: t(language, "maxEmbedDepth"), desc: t(language, "embedLimitDesc"), control: { type: "number", key: "maxEmbedDepth", min: 0, max: 1000, step: 1 } },
-            ],
-          },
-        ],
-      },
+      { name: msg("language"), desc: msg("languageDesc"), control: { type: "dropdown", key: "language",
+        options: { system: msg("languageSystem"), en: "English", "zh-CN": "简体中文", "zh-TW": "繁體中文", ja: "日本語", de: "Deutsch" } } },
+      { type: "page", name: msg("advancedSettings"), desc: msg("advancedSettingsDesc"), items: [
+        this.limitRow("maxImageSizeMb", "maxImage", 500, lang, true),
+        this.limitRow("maxTotalImageSizeMb", "maxTotalImages", 2000, lang, true),
+        this.limitRow("maxEmbedCount", "maxEmbedCount", 100000, lang),
+        this.limitRow("maxEmbedDepth", "maxEmbedDepth", 1000, lang),
+      ] },
+      { name: msg("settingsTitle"), desc: msg("privacy") },
     ];
+  }
+
+  private linkOptions(lang: UiLanguage): Record<string, string> {
+    return { source: t(lang, "preserveSource"), text: t(lang, "visibleText"), markdown: t(lang, "portableLink") };
+  }
+
+  private destinationRows(id: TargetId, lang: UiLanguage): SettingGroupItem[] {
+    const { label, description } = targetText(lang, id);
+    const enabled = this.plugin.isTargetEnabled(id);
+    const rows: SettingGroupItem[] = [{
+      name: label, desc: description, render: row => {
+        if (this.reordering) {
+          const order = this.plugin.settings.targetOrder;
+          const index = order.indexOf(id);
+          for (const offset of [-1, 1]) {
+            const next = index + offset;
+            const tooltip = t(lang, offset < 0 ? "moveUp" : "moveDown") + " · " + label;
+            row.addExtraButton(button => button.setIcon(offset < 0 ? "arrow-up" : "arrow-down").setTooltip(tooltip)
+              .setDisabled(next < 0 || next >= order.length).onClick(() => {
+                const moved = [...order];
+                moved.splice(next, 0, ...moved.splice(index, 1));
+                void this.setControlValue("targetOrder", moved);
+              }));
+          }
+        } else if (id !== "original-source" && enabled) {
+          row.addExtraButton(button => {
+            button.setIcon("settings").setTooltip(t(lang, "destinationPreferences") + " · " + label).onClick(() => {
+              this.expandedTarget = this.expandedTarget === id ? null : id;
+              this.update();
+            });
+            button.extraSettingsEl.setAttribute("aria-expanded", String(this.expandedTarget === id));
+          });
+        }
+        row.addToggle(control => {
+          const last = enabled && this.plugin.settings.enabledTargets.length === 1;
+          control.setValue(enabled).setDisabled(last).setTooltip(last ? t(lang, "atLeastOne") : label)
+            .onChange(value => {
+              const current = this.plugin.settings.enabledTargets;
+              if (!value && current.length === 1 && current.includes(id)) {
+                new Notice(t(lang, "atLeastOne"));
+                this.update();
+                return;
+              }
+              if (!value && this.expandedTarget === id) this.expandedTarget = null;
+              void this.setControlValue("enabledTargets", value ? [...current, id] : current.filter(item => item !== id));
+            });
+          control.toggleEl.setAttribute("aria-label", label);
+        });
+      },
+    }];
+    if (!this.reordering && enabled && this.expandedTarget === id) {
+      const booleanOptions = { enabled: t(lang, "enabledOption"), disabled: t(lang, "disabledOption") };
+      rows.push(this.preferenceRow(id, "includeTitle", "includeTitle", booleanOptions, lang),
+        this.preferenceRow(id, "internalLinkMode", "internalLinks", this.linkOptions(lang), lang));
+      if (getTarget(id).richText || id === "html-source") {
+        rows.push(this.preferenceRow(id, "embedLocalImages", "embedImages", booleanOptions, lang));
+      }
+    }
+    return rows;
+  }
+
+  private preferenceRow(id: TargetId, field: keyof TargetPreferences, name: LabelKey,
+    options: Record<string, string>, lang: UiLanguage): SettingGroupItem {
+    const state = this.plugin.settings;
+    const optionKey = (value: boolean | string) => typeof value === "boolean" ? (value ? "enabled" : "disabled") : value;
+    const inherited = t(lang, "inheritSetting") + " (" + options[optionKey(state[field])] + ")";
+    const saved = state.targetPreferences[id]?.[field];
+    return { name: t(lang, name), render: row => {
+      row.settingEl.addClass("target-copy-preference");
+      row.addDropdown(control => {
+        control.selectEl.setAttribute("aria-label", targetText(lang, id).label + " · " + t(lang, name));
+        control.addOptions({ inherit: inherited, ...options }).setValue(saved === undefined ? "inherit" : optionKey(saved))
+          .onChange(value => {
+            const preferences = this.plugin.settings.targetPreferences;
+            const updated = { ...preferences[id] };
+            if (value === "inherit") delete updated[field];
+            else if (field !== "internalLinkMode") updated[field] = value === "enabled";
+            else if (value === "markdown" || value === "text" || value === "source") updated[field] = value;
+            void this.setControlValue("targetPreferences", { ...preferences, [id]: updated });
+          });
+      });
+    } };
+  }
+
+  private limitRow(key: LimitKey, name: LabelKey, max: number, lang: UiLanguage, megabytes = false): SettingDefinitionItem {
+    const label = t(lang, name) + (megabytes ? " (MB)" : "");
+    return { name: label, render: row => {
+      const current = this.plugin.settings[key];
+      row.addDropdown(mode => {
+        mode.selectEl.setAttribute("aria-label", label);
+        mode.addOptions({ unlimited: t(lang, "unlimited"), custom: t(lang, "setLimit") }).setValue(current ? "custom" : "unlimited");
+        row.addText(number => {
+          const input = number.inputEl;
+          input.type = "number";
+          input.min = "1";
+          input.max = String(max);
+          input.step = "1";
+          input.placeholder = "1–" + max;
+          input.setAttribute("aria-label", label);
+          input.hidden = !current;
+          number.setValue(current ? String(current) : "");
+          input.addEventListener("change", () => {
+            if (input.reportValidity() && input.valueAsNumber > 0) void this.setControlValue(key, input.valueAsNumber);
+          });
+          input.addEventListener("blur", () => {
+            if (!input.value || !input.validity.valid) this.update();
+          });
+          mode.onChange(value => {
+            if (value === "unlimited") void this.setControlValue(key, 0);
+            else { input.hidden = false; input.focus(); }
+          });
+        });
+      });
+    } };
   }
 }

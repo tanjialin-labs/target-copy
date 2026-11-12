@@ -37,12 +37,17 @@ export function getReadingViewSelection(container: HTMLElement): string | null {
   if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null;
 
   const wrapper = createDetachedEl(ownerDocument, "div");
+  let selectedHere = false;
   for (let index = 0; index < selection.rangeCount; index += 1) {
     const range = selection.getRangeAt(index);
     const commonAncestor = range.commonAncestorContainer.nodeType === 1
       ? range.commonAncestorContainer as HTMLElement
       : range.commonAncestorContainer.parentElement;
-    if (!commonAncestor || !container.contains(commonAncestor)) continue;
+    if (!commonAncestor || !container.contains(commonAncestor)) {
+      if (range.intersectsNode(container)) return "";
+      continue;
+    }
+    selectedHere = true;
 
     const fragment = rebuildSelectionContext(range, commonAncestor, container);
     if (wrapper.childNodes.length > 0) wrapper.appendChild(ownerDocument.createTextNode("\n"));
@@ -51,7 +56,8 @@ export function getReadingViewSelection(container: HTMLElement): string | null {
   const hasMeaningfulContent =
     Boolean(wrapper.textContent?.trim()) || Boolean(wrapper.querySelector('img, svg, table, pre, canvas, audio, video, hr, math, mjx-container, input[type="checkbox"]'));
   if (hasMeaningfulContent) appendSelectedFootnotes(wrapper, container);
-  return hasMeaningfulContent ? wrapper.innerHTML : null;
+  if (hasMeaningfulContent) return wrapper.innerHTML;
+  return selectedHere ? "" : null;
 }
 
 function rebuildSelectionContext(

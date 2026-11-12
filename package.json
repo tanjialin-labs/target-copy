@@ -1,6 +1,6 @@
 {
   "name": "target-copy",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Copy Obsidian notes as destination-aware rich text or source-preserving Markdown.",
   "author": "Logan",

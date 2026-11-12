@@ -17,7 +17,7 @@ export function parseSrcset(value: string): ImageCandidate[] {
     const descriptorStart = index;
     while (index < value.length && value[index] !== ",") index += 1;
     const descriptor = value.slice(descriptorStart, index).trim();
-    if (!url.startsWith("data:") && url.includes(",")) {
+    if (!/^data:/i.test(url) && url.includes(",")) {
       const parts = url.split(",");
       candidates.push(...parts.slice(0, -1).filter(Boolean).map((part) => ({ url: part, descriptor: "" })));
       url = parts.at(-1)!;

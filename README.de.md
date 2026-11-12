@@ -34,7 +34,7 @@ Die Zielauswahl zeigt den Umfang (Auswahl oder ganzes Dokument), das Quellformat
 und das Zwischenablageformat der Ziele. Die Reihenfolge bleibt fest; das zuletzt
 verwendete Ziel wird markiert.
 
-Unter **Einstellungen → Target Copy → Erweiterte Einstellungen** lassen sich
+Unter **Einstellungen → Target Copy** lassen sich
 aktive Ziele anordnen und Titel, interne Links sowie lokale Bildeinbettung pro
 Ziel einstellen. Jede Option kann die allgemeine Einstellung übernehmen.
 Die Anzahl und Verschachtelungstiefe eingebetteter Notizen sind mit `0` standardmäßig
@@ -55,7 +55,7 @@ Kopiervorgangs. Fortschritts- und Kompatibilitätsmeldungen lassen sich getrennt
 4. Obsidian neu laden und Target Copy unter „Einstellungen → Community Plugins“
    aktivieren.
 
-Version 1.0.1 ist für Obsidian Desktop ausgelegt. YAML, Kommentare,
+Version 1.0.2 ist für Obsidian Desktop ausgelegt. YAML, Kommentare,
 Links, Formeln, alle Codeblöcke, SVG-/Canvas-Markup und ursprüngliche Bilddaten
 bleiben erhalten; das äußere Format wird an das gewählte Ziel angepasst.
 Wikilinks werden standardmäßig zu anklickbaren Obsidian-Links. In den

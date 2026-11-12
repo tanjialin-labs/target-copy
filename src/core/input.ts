@@ -1,57 +1,47 @@
 import { App, MarkdownView, TFile } from "obsidian";
-
-import type { CopyInput } from "../types";
+import type { CopyInput, TargetId } from "../types";
 import { getEditorSelections, getReadingViewSelection } from "./selection";
 import { collectReferenceDefinitions } from "./references";
 
-export async function collectCopyInput(
-  app: App,
-  requestedFile?: TFile,
-): Promise<CopyInput | null> {
-  const activeView = app.workspace.getActiveViewOfType(MarkdownView);
-  const file = requestedFile ?? activeView?.file ?? app.workspace.getActiveFile();
+export type CopyScope = Pick<CopyInput, "title" | "sourcePath" | "isSelection" | "sourceFormat" | "renderedHtml">;
+
+export interface CopySnapshot extends CopyScope {
+  readMarkdown: () => string | Promise<string>;
+  readDefinitions?: () => string;
+}
+
+export function captureCopyInput(app: App, requestedFile?: TFile): CopySnapshot | null {
+  const view = app.workspace.getActiveViewOfType(MarkdownView);
+  const file = requestedFile ?? view?.file ?? app.workspace.getActiveFile();
   if (!file || !/^(md|html?)$/i.test(file.extension)) return null;
-
-  if (!requestedFile && activeView?.file?.path === file.path) {
-    if (activeView.getMode() === "preview") {
-      const renderedHtml = getReadingViewSelection(activeView.containerEl);
-      if (renderedHtml) {
-        return {
-          markdown: "",
-          renderedHtml,
-          title: file.basename,
-          sourcePath: file.path,
-          isSelection: true,
-        };
+  const scope: Pick<CopyInput, "title" | "sourcePath" | "sourceFormat"> = {
+    title: file.basename, sourcePath: file.path, sourceFormat: /^html?$/i.test(file.extension) ? "html" : "markdown",
+  };
+  if (view?.file?.path === file.path) {
+    if (view.getMode() === "preview") {
+      if (!requestedFile) {
+        const renderedHtml = getReadingViewSelection(view.containerEl);
+        if (renderedHtml !== null) {
+          return { ...scope, isSelection: true, renderedHtml, readMarkdown: () => "" };
+        }
       }
-    }
-
-    if (activeView.getMode() !== "preview") {
-      const selection = getEditorSelections(activeView.editor);
-      if (selection) {
-        return {
-          markdown: selection,
-          referenceDefinitions: collectReferenceDefinitions(activeView.editor.getValue(), selection),
-          title: file.basename,
-          sourcePath: file.path,
-          isSelection: true,
-        };
+    } else {
+      const selection = requestedFile ? null : getEditorSelections(view.editor);
+      // Hold the editor revision while the menu owns focus. Parse it only on copy.
+      const documentText = view.editor.getValue();
+      if (selection !== null) {
+        return { ...scope, isSelection: true, readMarkdown: () => selection,
+          readDefinitions: () => collectReferenceDefinitions(documentText, selection) };
       }
-      return {
-        markdown: activeView.editor.getValue(),
-        title: file.basename,
-        sourcePath: file.path,
-        isSelection: false,
-      };
+      return { ...scope, isSelection: false, readMarkdown: () => documentText };
     }
   }
+  return { ...scope, isSelection: false, readMarkdown: () => app.vault.cachedRead(file) };
+}
 
-  return {
-    markdown: activeView?.file?.path === file.path && activeView.getMode() !== "preview"
-      ? activeView.editor.getValue() : await app.vault.cachedRead(file),
-    sourceFormat: /^html?$/i.test(file.extension) ? "html" : "markdown",
-    title: file.basename,
-    sourcePath: file.path,
-    isSelection: false,
-  };
+export async function materializeCopyInput(snapshot: CopySnapshot, target: TargetId): Promise<CopyInput> {
+  const { readMarkdown, readDefinitions, ...scope } = snapshot;
+  const markdown = await readMarkdown();
+  if (!readDefinitions || target === "original-source") return { ...scope, markdown };
+  return { ...scope, markdown, referenceDefinitions: readDefinitions() };
 }

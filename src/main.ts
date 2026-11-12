@@ -13,7 +13,7 @@ import {
 import { writeClipboard } from "./core/clipboard";
 import { TargetConverter } from "./core/converter";
 import { getActiveWindow } from "./core/dom-context";
-import { collectCopyInput } from "./core/input";
+import { captureCopyInput, materializeCopyInput, type CopyScope, type CopySnapshot } from "./core/input";
 import { LatestTaskQueue } from "./core/latest-task";
 import { resolveLanguage, t, targetText } from "./i18n";
 import { TargetCopySettingTab } from "./settings";
@@ -21,7 +21,6 @@ import {
   DEFAULT_SETTINGS,
   getTarget,
   normalizeSettings,
-  type CopyInput,
   type TargetCopySettings,
   type TargetDefinition,
   type TargetId,
@@ -151,7 +150,7 @@ export default class TargetCopyPlugin extends Plugin {
       name: t(language, "repeatLast"),
       checkCallback: (checking) => {
         const available = this.hasMarkdownFile();
-        const targetId = this.isTargetEnabled(this.settings.lastTarget)
+        const targetId = this.settings.lastTarget && this.isTargetEnabled(this.settings.lastTarget)
           ? this.settings.lastTarget
           : this.settings.defaultTarget;
         if (!checking && available) void this.copyTo(targetId);
@@ -182,7 +181,7 @@ export default class TargetCopyPlugin extends Plugin {
   }
 
   private addPickerMenuItem(menu: Menu, file?: TFile): void {
-    const snapshot = collectCopyInput(this.app, file).catch(() => null);
+    const snapshot = captureCopyInput(this.app, file);
     menu.addItem((item) => {
       item
         .setTitle(t(this.getUiLanguage(), "copyForTarget"))
@@ -196,8 +195,7 @@ export default class TargetCopyPlugin extends Plugin {
 
       const language = this.getUiLanguage();
       submenu.addItem((scope) => {
-        scope.setTitle(t(language, "loadingSelection")).setDisabled(true);
-        void snapshot.then((input) => scope.setTitle(input ? describeInput(input, language) : t(language, "noNote")));
+        scope.setTitle(snapshot ? describeInput(snapshot, language) : t(language, "noNote")).setDisabled(true);
       });
       submenu.addSeparator();
       for (const target of this.getTargetsForPicker()) {
@@ -206,11 +204,10 @@ export default class TargetCopyPlugin extends Plugin {
             .setTitle(targetText(language, target.id).label)
             .onClick(() => void this.copyTo(target.id, file, snapshot));
           if (target.id === this.settings.lastTarget) targetItem.setIcon("history");
-          if (target.id === "original-source") void snapshot.then((input) => {
-            if (input?.renderedHtml !== undefined) {
-              targetItem.setDisabled(true).setTitle(`${targetText(language, target.id).label} — ${t(language, "copySourceReading")}`);
-            }
-          });
+          if (snapshot?.renderedHtml === "") targetItem.setDisabled(true);
+          if (target.id === "original-source" && snapshot?.renderedHtml !== undefined) {
+            targetItem.setDisabled(true).setTitle(`${targetText(language, target.id).label} — ${t(language, "copySourceReading")}`);
+          }
         });
       }
     });
@@ -238,7 +235,7 @@ export default class TargetCopyPlugin extends Plugin {
     new CopyDetailsModal(this, this.lastCopyDetails).open();
   }
 
-  private openTargetPicker(file?: TFile, snapshot = collectCopyInput(this.app, file).catch(() => null)): void {
+  private openTargetPicker(file?: TFile, snapshot = captureCopyInput(this.app, file)): void {
     new TargetPickerModal(this, file, snapshot).open();
   }
 
@@ -246,7 +243,7 @@ export default class TargetCopyPlugin extends Plugin {
     return /^(md|html?)$/i.test(this.app.workspace.getActiveFile()?.extension || "");
   }
 
-  async copyTo(targetId: TargetId, file?: TFile, snapshot?: Promise<CopyInput | null>): Promise<void> {
+  async copyTo(targetId: TargetId, file?: TFile, snapshot?: CopySnapshot | null): Promise<void> {
     this.activeConversion?.abort();
     const controller = new AbortController();
     this.activeConversion = controller;
@@ -266,13 +263,17 @@ export default class TargetCopyPlugin extends Plugin {
     }
 
     try {
-      const input = await (snapshot ?? collectCopyInput(this.app, file));
+      const captured = snapshot === undefined ? captureCopyInput(this.app, file) : snapshot;
       controller.signal.throwIfAborted();
-      if (!input) {
+      if (!captured) {
         new Notice(t(language, "noNote"));
         return;
       }
-      if (targetId === "original-source" && input.renderedHtml !== undefined) {
+      if (captured.renderedHtml === "") {
+        new Notice(t(language, "emptySelection"));
+        return;
+      }
+      if (targetId === "original-source" && captured.renderedHtml !== undefined) {
         new Notice(t(language, "readingSourceHint"));
         return;
       }
@@ -292,6 +293,8 @@ export default class TargetCopyPlugin extends Plugin {
         }, 600);
       }
 
+      const input = await materializeCopyInput(captured, targetId);
+      controller.signal.throwIfAborted();
       const result = await this.converter.convert(input, targetId, settings, controller.signal);
       if (sequence !== this.copySequence) return;
       progressNotice?.hide();
@@ -333,13 +336,11 @@ export default class TargetCopyPlugin extends Plugin {
 }
 
 class TargetPickerModal extends FuzzySuggestModal<TargetDefinition> {
-  private input?: CopyInput | null;
-  private alive = false;
   private readonly scopeEl: HTMLElement;
   constructor(
     private readonly plugin: TargetCopyPlugin,
     private readonly file?: TFile,
-    private readonly snapshot?: Promise<CopyInput | null>,
+    private readonly snapshot?: CopySnapshot | null,
   ) {
     super(plugin.app);
     this.modalEl.addClass("target-copy-picker");
@@ -350,31 +351,20 @@ class TargetPickerModal extends FuzzySuggestModal<TargetDefinition> {
   }
 
   async onOpen(): Promise<void> {
-    this.alive = true;
     await super.onOpen();
-    if (!this.alive) return;
-    this.scopeEl.setText(t(this.plugin.getUiLanguage(), "loadingSelection"));
-    void this.snapshot?.then((input) => {
-      if (!this.alive) return;
-      this.input = input;
-      const language = this.plugin.getUiLanguage();
-      this.scopeEl.setText(input ? describeInput(input, language) : t(language, "noNote"));
-      if (input?.renderedHtml !== undefined && this.plugin.isTargetEnabled("original-source")) {
-        this.scopeEl.createDiv({ cls: "target-copy-picker__description", text: t(language, "readingSourceHint") });
-      }
-      this.inputEl.trigger("input");
-    });
-  }
-
-  onClose(): void {
-    this.alive = false;
-    super.onClose();
+    if (!this.modalEl.isConnected) return;
+    const input = this.snapshot;
+    const language = this.plugin.getUiLanguage();
+    this.scopeEl.setText(input ? describeInput(input, language) : t(language, "noNote"));
+    if (input?.renderedHtml && this.plugin.isTargetEnabled("original-source")) {
+      this.scopeEl.createDiv({ cls: "target-copy-picker__description", text: t(language, "readingSourceHint") });
+    }
   }
 
   getItems(): TargetDefinition[] {
-    if (!this.input) return [];
+    if (!this.snapshot || this.snapshot.renderedHtml === "") return [];
     return this.plugin.getTargetsForPicker().filter((target) =>
-      target.id !== "original-source" || this.input?.renderedHtml === undefined);
+      target.id !== "original-source" || this.snapshot?.renderedHtml === undefined);
   }
 
   getItemText(item: TargetDefinition): string {
@@ -433,7 +423,8 @@ function createResultNotice(
   return fragment;
 }
 
-function describeInput(input: CopyInput, language: UiLanguage): string {
+function describeInput(input: CopyScope, language: UiLanguage): string {
+  if (input.renderedHtml === "") return t(language, "emptySelection");
   const format = input.renderedHtml !== undefined ? "copySourceReading" : input.sourceFormat === "html" ? "copySourceHtml" : "copySourceMarkdown";
   return `${t(language, input.isSelection ? "copyScopeSelection" : "copyScopeNote")} · ${t(language, format)}`;
 }

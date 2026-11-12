@@ -1,5 +1,6 @@
 import { t } from "../i18n";
 import type { UiLanguage } from "../types";
+import { parseSrcset, serializeSrcset } from "./srcset";
 import { dataUrlByteLength } from "./data-url";
 import { createDetachedEl } from "./dom-context";
 
@@ -170,12 +171,33 @@ class ImageBudget {
   }
 
   registerExistingImages(root: HTMLElement): void {
-    for (const image of [
-      ...root.querySelectorAll<HTMLImageElement>('img[src^="data:image/"]'),
-    ]) {
-      const bytes = dataUrlByteLength(image.src);
-      const label = image.alt || t(this.language, "diagramLabel");
-      if (!this.add(bytes, label)) replaceWithPlaceholder(image, label);
+    if (!Number.isFinite(this.maxImageBytes) && !Number.isFinite(this.maxTotalBytes)) return;
+    const rejected: HTMLImageElement[] = [];
+    // Preserve the fallback images first. Each embedded occurrence occupies clipboard space.
+    for (const image of root.querySelectorAll("img[src]")) {
+      const src = image.getAttribute("src") || "";
+      if (!/^data:image\//i.test(src)) continue;
+      const img = image as HTMLImageElement;
+      if (!this.add(dataUrlByteLength(src), img.alt || t(this.language, "diagramLabel"))) {
+        img.removeAttribute("src");
+        rejected.push(img);
+      }
+    }
+    for (const element of root.querySelectorAll("img[srcset], picture > source[srcset]")) {
+      const original = element.getAttribute("srcset") || "";
+      if (!/data:image\//i.test(original)) continue;
+      const label = element.getAttribute("alt") || element.closest("picture")?.querySelector("img")?.alt ||
+        t(this.language, "diagramLabel");
+      const candidates = parseSrcset(original);
+      const kept = candidates.filter(({ url }) => !/^data:image\//i.test(url) || this.add(dataUrlByteLength(url), label));
+      if (kept.length === candidates.length) continue;
+      if (kept.length) element.setAttribute("srcset", serializeSrcset(kept));
+      else element.removeAttribute("srcset");
+    }
+    for (const image of rejected) {
+      if (!image.hasAttribute("srcset") && !image.closest("picture")?.querySelector("source[srcset]")) {
+        replaceWithPlaceholder(image, image.alt || t(this.language, "diagramLabel"));
+      }
     }
   }
 

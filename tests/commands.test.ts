@@ -75,6 +75,7 @@ class FakeMenu {
 
 function createPlugin(): TargetCopyPlugin {
   const plugin = Object.create(TargetCopyPlugin.prototype) as TargetCopyPlugin;
+  Object.defineProperty(plugin, "app", { value: { workspace: { getActiveViewOfType: () => null, getActiveFile: () => null } } });
   plugin.settings = {
     ...DEFAULT_SETTINGS,
     language: "zh-CN",
@@ -118,7 +119,7 @@ describe("destination context submenu", () => {
   it("keeps a stable submenu order and marks the last target", () => {
     const copyTo = vi.spyOn(plugin, "copyTo").mockResolvedValue();
     const menu = new FakeMenu();
-    const file = { path: "note.md" };
+    const file = { path: "note.md", basename: "note", extension: "md" };
     const addPickerMenuItem = (
       plugin as unknown as {
         addPickerMenuItem: (menu: FakeMenu, file: { path: string }) => void;
@@ -138,7 +139,7 @@ describe("destination context submenu", () => {
     expect(menu.items[0]?.submenu?.items[2]?.icon).toBe("history");
 
     menu.items[0]?.submenu?.items[2]?.click?.();
-    expect(copyTo).toHaveBeenCalledWith("wechat-official", file, expect.any(Promise));
+    expect(copyTo).toHaveBeenCalledWith("wechat-official", file, expect.objectContaining({ sourcePath: "note.md", isSelection: false }));
   });
 
   it("falls back to the picker when the host does not expose submenus", () => {

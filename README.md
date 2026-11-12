@@ -6,7 +6,7 @@
 Copy an Obsidian selection or note in a format tailored for the app where it
 will be pasted. Every conversion runs locally inside Obsidian.
 
-> Target Copy 1.0.1 is the current open-source desktop release.
+> Target Copy 1.0.2 is the current open-source desktop release.
 
 Read the [Target Copy product story (Chinese)](https://blog.tanjialin.com/posts/68421)
 for its design intent and a closer look at the workflow.
@@ -100,8 +100,8 @@ menu, and command palette show the same enabled destinations.
 
 ### Control what is carried to the destination
 
-Set the default destination, title, internal-link behavior, local-image
-embedding, image limits, and copy notifications.
+Open the gear beside a destination to adjust its title, internal links, and
+local images. Each inherited option displays its current value.
 
 ![Target Copy copy preferences](docs/images/copy-preferences.png)
 
@@ -118,14 +118,11 @@ The picker shows whether it will copy a selection or the whole document, the
 source format, and each destination's clipboard format. Destinations keep a
 stable order, with a marker on the last-used target.
 
-In **Settings → Target Copy → Advanced settings**:
-
-- **Menu order** arranges enabled destinations in menus and the picker.
-- **Destination preferences** sets title inclusion, internal links, and local
-  image embedding for individual destinations. Each option can follow the general setting.
-- **Embedded notes** sets expansion count and nesting depth. Both default to `0`
-  for unlimited expansion. Circular or unavailable references remain visible in
-  the output and are listed in copy details.
+In **Settings → Target Copy**, choose the Quick Copy destination at the top. In
+**Copy destinations**, toggle the apps you use, choose **Adjust order** to move
+them, or open the gear beside an enabled target to set its title, links, and image
+preferences. Inherited options show the current general value. **Advanced settings**
+contains optional limits for embedded images and note expansion. Limits default to unlimited.
 
 Editor selections include the reference-link and footnote definitions they use.
 Original source remains an exact copy of the selected text.
@@ -169,7 +166,7 @@ so the command palette stays compact.
 - Slack receives rich HTML plus readable plain text for its message editor.
 - Mermaid, SVG, Dataview, Excalidraw, and other plugin syntax is preserved as
   editable source for the destination application to render.
-- Version 1.0.1 targets Obsidian Desktop and its desktop clipboard implementation.
+- Version 1.0.2 targets Obsidian Desktop and its desktop clipboard implementation.
 - Word and WPS receive Office-friendly HTML; the receiving editor controls its final layout.
 - The WeChat editor may re-upload pasted images. Always confirm every image in
   the editor before publishing.
