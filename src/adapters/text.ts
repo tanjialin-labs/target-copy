@@ -1,11 +1,11 @@
 export { domToMarkdown } from "./markdown";
 
 export function domToSlack(root: HTMLElement): string {
-  return renderBlocks(root, "slack").replace(/^\n+|\n+$/g, "");
+  return renderBlocks(root.childNodes, "slack").replace(/^\n+|\n+$/g, "");
 }
 
 export function domToPlainText(root: HTMLElement): string {
-  return renderBlocks(root, "plain").replace(/\n\n$/, "");
+  return renderBlocks(root.childNodes, "plain").replace(/\n\n$/, "");
 }
 
 
@@ -27,7 +27,7 @@ const INLINE_TAGS = new Set([
   "sup",
 ]);
 
-function renderBlocks(root: ParentNode, flavor: Flavor, depth = 0): string {
+function renderBlocks(nodes: Iterable<Node>, flavor: Flavor, depth = 0): string {
   const chunks: string[] = [];
   let inlineRun = "";
   const flush = () => {
@@ -35,7 +35,7 @@ function renderBlocks(root: ParentNode, flavor: Flavor, depth = 0): string {
     inlineRun = "";
   };
 
-  for (const node of [...root.childNodes]) {
+  for (const node of nodes) {
     if (node.nodeType === 3) {
       const value = normalizeInlineWhitespace(node.textContent || "");
       if (value) inlineRun += flavor === "slack" ? escapeSlackText(value) : value;
@@ -64,7 +64,7 @@ function renderBlocks(root: ParentNode, flavor: Flavor, depth = 0): string {
       chunks.push(flavor === "slack" ? `\`\`\`\n${code}\n\`\`\`\n\n` : `${code}\n\n`);
     } else if (tag === "blockquote") {
       const text =
-        renderBlocks(element, flavor, depth).trim() ||
+        renderBlocks(element.childNodes, flavor, depth).trim() ||
         renderInline(element, flavor).trim();
       chunks.push(`${prefixLines(text, "> ")}\n\n`);
     } else if (tag === "table") {
@@ -75,7 +75,7 @@ function renderBlocks(root: ParentNode, flavor: Flavor, depth = 0): string {
     } else if (element.classList.contains("target-copy-callout")) {
       const title = element.querySelector(".target-copy-callout-title")?.textContent?.trim() || "Note";
       const contentElement = element.querySelector<HTMLElement>(".target-copy-callout-content");
-      const content = contentElement ? renderBlocks(contentElement, flavor, depth).trim() : "";
+      const content = contentElement ? renderBlocks(contentElement.childNodes, flavor, depth).trim() : "";
       const value = `${flavor === "slack" ? `*${title}*` : title}${content ? `\n${content}` : ""}`;
       chunks.push(`${prefixLines(value, "> ")}\n\n`);
     } else if (tag === "br") {
@@ -83,7 +83,7 @@ function renderBlocks(root: ParentNode, flavor: Flavor, depth = 0): string {
     } else if (isInlineTag(tag)) {
       chunks.push(`${renderInlineNode(element, flavor).trim()}\n\n`);
     } else {
-      const nested = renderBlocks(element, flavor, depth).trim();
+      const nested = renderBlocks(element.childNodes, flavor, depth).trim();
       chunks.push(nested ? `${nested}\n\n` : `${renderInline(element, flavor).trim()}\n\n`);
     }
   }
@@ -100,20 +100,32 @@ function renderList(list: HTMLElement, flavor: Flavor, depth: number): string {
   for (const child of [...list.children]) {
     if (child.tagName !== "LI") continue;
 
-    const nestedLists = [...child.children].filter((element) => /^(UL|OL)$/.test(element.tagName));
-    const inlineParts: string[] = [];
-    for (const node of [...child.childNodes]) {
-      if (node.nodeType === 1 && /^(UL|OL)$/.test((node as HTMLElement).tagName)) continue;
-      inlineParts.push(renderInlineNode(node, flavor));
-    }
-
     if (child.hasAttribute("value")) index = Number(child.getAttribute("value"));
     const indent = "  ".repeat(depth);
     const marker = ordered ? `${index}.` : "•";
-    lines.push(`${indent}${marker} ${inlineParts.join("").trim()}`);
-    for (const nested of nestedLists) {
-      lines.push(renderList(nested as HTMLElement, flavor, depth + 1));
+    const continuation = indent + " ".repeat(marker.length + 1);
+    const markerLine = lines.length;
+    lines.push(indent + marker);
+
+    const body: Node[] = [];
+    const flushBody = () => {
+      const text = renderBlocks(body, flavor).replace(/\n\n$/, "");
+      body.length = 0;
+      if (!text) return;
+      const paragraphs = text.split("\n");
+      if (lines.length === markerLine + 1) lines[markerLine] += " " + paragraphs.shift()!;
+      for (const line of paragraphs) lines.push(line ? continuation + line : "");
+    };
+
+    for (const node of child.childNodes) {
+      if (node.nodeType === 1 && /^(UL|OL)$/.test((node as Element).tagName)) {
+        flushBody();
+        lines.push(renderList(node as HTMLElement, flavor, depth + 1));
+      } else {
+        body.push(node);
+      }
     }
+    flushBody();
     index += list.hasAttribute("reversed") ? -1 : 1;
   }
 

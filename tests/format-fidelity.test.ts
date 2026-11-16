@@ -136,6 +136,16 @@ describe("source boundaries", () => {
     expect(toPortableMarkdown(source, DEFAULT_SETTINGS)).toBe(source);
   });
 
+  it("escapes literal block markers in rendered prose, including across inline spans and after line breaks", () => {
+    const root = dom("<p>## 安装说明</p><p>1<span>.</span> 示例<br>42) Another</p><p>---</p><p>- - -</p>");
+    expect(domToMarkdown(root)).toBe("\\## 安装说明\n\n1\\. 示例  \n42\\) Another\n\n\\---\n\n\\- - -");
+  });
+
+  it("keeps structural markers and literal markers inside code distinct", () => {
+    expect(domToMarkdown(dom("<h2>标题</h2><ol><li>步骤</li></ol><hr><p><code>## example</code></p>")))
+      .toBe("## 标题\n\n1. 步骤\n\n---\n\n`## example`");
+  });
+
   it("keeps separate paragraphs inside HTML table cells", () => {
     expect(domToMarkdown(dom("<table><tr><td><p>First</p><p>Second</p></td></tr></table>")))
       .toContain("First<br><br>Second");

@@ -10,14 +10,15 @@ export function domToMarkdown(root: HTMLElement): string {
 
 function blocks(root: ParentNode): string {
   const chunks: string[] = [];
-  let inlineRun = "";
+  const inlineNodes: Node[] = [];
   const flush = () => {
-    if (inlineRun.trim()) chunks.push(inlineRun.trim());
-    inlineRun = "";
+    const prose = inlineSequence(inlineNodes).trim();
+    if (prose) chunks.push(prose);
+    inlineNodes.length = 0;
   };
   for (const node of root.childNodes) {
     if (node.nodeType !== 1 || !(node as Element).matches(BLOCKS)) {
-      inlineRun += inline(node);
+      inlineNodes.push(node);
       continue;
     }
     flush();
@@ -97,7 +98,26 @@ function table(element: HTMLElement): string {
 }
 
 function children(element: ParentNode): string {
-  return [...element.childNodes].map(inline).join("");
+  return inlineSequence(element.childNodes);
+}
+
+function inlineSequence(nodes: Iterable<Node>): string {
+  let output = "";
+  let line = "";
+  for (const node of nodes) {
+    if (node.nodeType === 1 && (node as Element).localName === "br") {
+      output += escapeLineStart(line) + "  \n";
+      line = "";
+    } else {
+      line += inline(node);
+    }
+  }
+  return output + escapeLineStart(line);
+}
+
+function escapeLineStart(line: string): string {
+  return line.replace(/^([ \t]*\d{1,9})([.)])(?=\s|$)/, "$1\\$2")
+    .replace(/^([ \t]*)([#+=-])(?=\s|$|\2)/, "$1\\$2");
 }
 
 function inline(node: Node): string {
@@ -167,7 +187,7 @@ function emphasis(element: HTMLElement, content: string, marker: string): string
 
 function escapeText(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    .replace(/([\\`*_[\]~|])/g, "\\$1").replace(/(^|\n)([ \t]*)([#+-]|\d+[.)])(?=\s)/g, "$1$2\\$3");
+    .replace(/([\\`*_[\]~|])/g, "\\$1");
 }
 
 function url(value: string): string {

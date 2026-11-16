@@ -51,13 +51,14 @@ it("defers file-menu reads until a target is chosen", async () => {
 it.each(["html-source", "google-docs"] as const)("enforces the final responsive image budget for %s", async target => {
   const small = "data:image/png;base64," + "A".repeat(1200);
   const big = "DATA:image/png;base64," + "B".repeat(1000);
-  const html = '<picture><source srcset="' + big + ' 2x, https://example.com/hi.png 3x"><img src="' + small + '" srcset="' + big + ' 2x"></picture>';
+  const remote = "https://example.com/hi.png?w=800,h=600";
+  const html = '<picture><source srcset="' + big + ' 2x, ' + remote + ' 3x"><img src="' + small + '" srcset="' + big + ' 2x"></picture>';
   const app = { vault: { getName: () => "Fixture" }, metadataCache: { getFirstLinkpathDest: () => null } };
   const result = await new TargetConverter(app as never).convert({ markdown: html, sourceFormat: "html",
     sourcePath: "Fixture.html", title: "Fixture", isSelection: false }, target, { ...DEFAULT_SETTINGS, maxTotalImageSizeMb: 0.001 });
   const output = result.html ?? result.text;
   expect(output).toContain(small);
   expect(output).not.toContain(big);
-  expect(output).toContain("https://example.com/hi.png");
+  expect(output).toContain(remote + " 3x");
   expect(result.warnings.join(" ")).toContain("total image limit");
 });

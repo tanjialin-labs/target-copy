@@ -152,13 +152,11 @@ export function isLanguagePreference(value: unknown): value is LanguagePreferenc
 export function normalizeSettings(value: unknown): TargetCopySettings {
   const loaded = isRecord(value) ? value : {};
   const enabledTargets = normalizeEnabledTargets(loaded.enabledTargets);
-  const firstEnabled = enabledTargets[0]!;
+  const targetOrder = normalizeTargetOrder(loaded.targetOrder);
   const defaultTarget =
     isTargetId(loaded.defaultTarget) && enabledTargets.includes(loaded.defaultTarget)
       ? loaded.defaultTarget
-      : enabledTargets.includes(DEFAULT_SETTINGS.defaultTarget)
-        ? DEFAULT_SETTINGS.defaultTarget
-        : firstEnabled;
+      : targetOrder.find(id => enabledTargets.includes(id))!;
   const lastTarget =
     isTargetId(loaded.lastTarget) && enabledTargets.includes(loaded.lastTarget)
       ? loaded.lastTarget
@@ -184,7 +182,7 @@ export function normalizeSettings(value: unknown): TargetCopySettings {
     enabledTargets,
     defaultTarget,
     lastTarget,
-    targetOrder: normalizeTargetOrder(loaded.targetOrder),
+    targetOrder,
     targetPreferences: normalizeTargetPreferences(loaded.targetPreferences),
     includeTitle: validBoolean(loaded.includeTitle, DEFAULT_SETTINGS.includeTitle),
     stripFrontmatter: validBoolean(

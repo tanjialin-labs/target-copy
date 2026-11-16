@@ -216,6 +216,17 @@ describe("text adapters", () => {
     expect(domToSlack(root)).toBe("Use 2 \\* 3 and *keep this bold*.");
   });
 
+  it.each([domToPlainText, domToSlack])("preserves interleaved list children in text output", (render) => {
+    const root = rootWith('<ol start="9"><li>先提交<ul><li>请同事复核</li></ul><p>最后归档</p>' +
+      '<ol><li>备份</li></ol>完成</li><li value="12">结束</li></ol>');
+    expect(render(root)).toBe("9. 先提交\n  • 请同事复核\n   最后归档\n  1. 备份\n   完成\n12. 结束");
+  });
+
+  it("keeps a parent marker when a nested list is its first child", () => {
+    expect(domToPlainText(rootWith("<ul><li><ol><li>First</li></ol><p>After</p></li></ul>")))
+      .toBe("•\n  1. First\n  After");
+  });
+
   it("keeps list structure in plain text", () => {
     const root = rootWith("<ol><li>First</li><li>Second<ul><li>Nested</li></ul></li></ol>");
     expect(domToPlainText(root)).toBe("1. First\n2. Second\n  • Nested");

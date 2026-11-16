@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 - 2026-11-17
+
+- Plain-text copies, including the text supplied with rich copies, keep nested lists and the paragraphs that follow them in their original order.
+- When copying a Reading view selection or an HTML file as Portable Markdown, literal heading, list, and divider markers remain visible as text. Actual headings, lists, and dividers keep their formatting.
+- Responsive images retain complete image addresses when their paths or query parameters contain commas. Per-image and total image limits still apply.
+- When you disable your default Quick Copy destination, Quick Copy switches to the first enabled destination in your menu order. Reordering destinations keeps your current default if it is still enabled.
+
 ## 1.0.2 - 2026-11-12
 
 - Set the Quick Copy destination at the top of Settings → Target Copy. Use **Adjust order** to rearrange destinations, or open a destination’s gear to change its preferences. Inherited options now show the value they use.

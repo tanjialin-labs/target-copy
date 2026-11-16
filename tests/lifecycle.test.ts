@@ -74,6 +74,17 @@ describe("clipboard recovery", () => {
 });
 
 describe("responsive sources", () => {
+  it("keeps comma-bearing URLs paired with their descriptors", () => {
+    const image = "https://example.com/photos/a,b.png?w=800,h=600";
+    const large = "https://example.com/photos/large.png";
+    expect(parseSrcset(image + " 1x, " + large + " 2x")).toEqual([
+      { url: image, descriptor: "1x" }, { url: large, descriptor: "2x" },
+    ]);
+    expect(parseSrcset(image + ", " + large)).toEqual([
+      { url: image, descriptor: "" }, { url: large, descriptor: "" },
+    ]);
+  });
+
   it("keeps data URL commas and density descriptors", () => {
     expect(parseSrcset("data:image/png;base64,AA== 1x, photo.png 2x")).toEqual([
       { url: "data:image/png;base64,AA==", descriptor: "1x" },

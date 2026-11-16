@@ -63,6 +63,12 @@ describe("settings normalization", () => {
     expect(settings.lastTarget).toBe("email");
   });
 
+  it("falls back to the first enabled destination in the user's menu order", () => {
+    const saved = { enabledTargets: ["google-docs", "notion"], targetOrder: ["word", "notion", "google-docs"] };
+    expect(normalizeSettings({ ...saved, defaultTarget: "word" }).defaultTarget).toBe("notion");
+    expect(normalizeSettings({ ...saved, defaultTarget: "google-docs" }).defaultTarget).toBe("google-docs");
+  });
+
   it("recovers from an empty destination list and invalid values", () => {
     const settings = normalizeSettings({
       enabledTargets: [],
