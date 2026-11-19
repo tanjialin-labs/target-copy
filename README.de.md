@@ -64,7 +64,7 @@ bleiben Bildverweise erhalten, ohne gezählt zu werden.
 4. Obsidian neu laden und Target Copy unter „Einstellungen → Community Plugins“
    aktivieren.
 
-Version 1.0.3 ist für Obsidian Desktop ausgelegt. YAML, Kommentare,
+Version 1.0.4 ist für Obsidian Desktop ausgelegt. YAML, Kommentare,
 Links, Formeln, alle Codeblöcke, SVG-/Canvas-Markup und ursprüngliche Bilddaten
 bleiben erhalten; das äußere Format wird an das gewählte Ziel angepasst.
 Wikilinks werden standardmäßig zu anklickbaren Obsidian-Links. In den

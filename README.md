@@ -6,7 +6,7 @@
 Copy an Obsidian selection or note in a format tailored for the app where it
 will be pasted. Every conversion runs locally inside Obsidian.
 
-> Target Copy 1.0.3 is the current open-source desktop release.
+> Target Copy 1.0.4 is the current open-source desktop release.
 
 Read the [Target Copy product story (Chinese)](https://blog.tanjialin.com/posts/68421)
 for its design intent and a closer look at the workflow.
@@ -174,7 +174,7 @@ so the command palette stays compact.
 - Slack receives rich HTML plus readable plain text for its message editor.
 - Mermaid, SVG, Dataview, Excalidraw, and other plugin syntax is preserved as
   editable source for the destination application to render.
-- Version 1.0.3 targets Obsidian Desktop and its desktop clipboard implementation.
+- Version 1.0.4 targets Obsidian Desktop and its desktop clipboard implementation.
 - Word and WPS receive Office-friendly HTML; the receiving editor controls its final layout.
 - The WeChat editor may re-upload pasted images. Always confirm every image in
   the editor before publishing.
