@@ -151,14 +151,12 @@ function inline(node: Node): string {
   if (["del", "s", "strike"].includes(tag)) return emphasis(element, content, "~~");
   if (tag === "a") {
     const href = element.getAttribute("href");
-    return href ? `[${content || escapeText(href)}](${url(href)})` : content;
+    return href ? `[${content || escapeText(href)}](${url(href)}${linkTitle(element)})` : content;
   }
   if (tag === "img") {
     const src = element.getAttribute("src");
     if (element.matches("[width], [height], [srcset], [sizes], [style]")) return element.outerHTML;
-    const title = element.getAttribute("title");
-    const suffix = title ? ` "${title.replace(/\\/g, "\\\\").replace(/"/g, "&quot;")}"` : "";
-    return src ? `![${escapeText(element.getAttribute("alt") ?? "")}](${url(src)}${suffix})` : element.outerHTML;
+    return src ? `![${escapeText(element.getAttribute("alt") ?? "")}](${url(src)}${linkTitle(element)})` : element.outerHTML;
   }
   if (tag === "span" && element.hasAttribute("style")) {
     const supported = new Set(["font-weight", "font-style", "text-decoration", "text-decoration-line"]);
@@ -192,6 +190,14 @@ function escapeText(value: string): string {
 
 function url(value: string): string {
   return value.replace(/ /g, "%20").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/</g, "%3C").replace(/>/g, "%3E");
+}
+
+function linkTitle(element: HTMLElement): string {
+  const title = element.getAttribute("title");
+  if (title === null) return "";
+  const escaped = title.replace(/&/g, "&amp;").replace(/\\/g, "\\\\").replace(/"/g, "&quot;")
+    .replace(/\r/g, "&#13;").replace(/\n/g, "&#10;");
+  return ` "${escaped}"`;
 }
 
 function quote(value: string): string {

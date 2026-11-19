@@ -18,6 +18,9 @@ export type UiLanguage = Exclude<LanguagePreference, "system">;
 export type TargetPreferences = Partial<Pick<TargetCopySettings,
   "includeTitle" | "embedLocalImages" | "internalLinkMode">>;
 
+export const LIMIT_MAXIMUMS = { maxImageSizeMb: 500, maxTotalImageSizeMb: 2000, maxEmbedCount: 100000, maxEmbedDepth: 1000 } as const;
+export type LimitKey = keyof typeof LIMIT_MAXIMUMS;
+
 export interface TargetCopySettings {
   language: LanguagePreference;
   enabledTargets: TargetId[];
@@ -36,6 +39,7 @@ export interface TargetCopySettings {
   showCompatibilityNotices: boolean;
   maxEmbedCount: number;
   maxEmbedDepth: number;
+  lastCustomLimits: Partial<Record<LimitKey, number>>;
 }
 
 export interface CopyInput {
@@ -56,12 +60,14 @@ export interface ConversionContext {
   settings: TargetCopySettings;
   resolveInternalLink?: (target: string, sourcePath?: string) => string;
   getSourcePathForElement?: (element: Element) => string;
+  resolveImagePath?: (element: Element, src: string, useMetadata: boolean) => string | null;
 }
 
 export interface AdapterResult {
   text: string;
   html?: string;
   warnings: string[];
+  images?: { total: number; included: number; embedded: number };
 }
 
 export interface CopyResult extends AdapterResult {
@@ -128,6 +134,7 @@ export const DEFAULT_SETTINGS: TargetCopySettings = {
   showCompatibilityNotices: true,
   maxEmbedCount: 0,
   maxEmbedDepth: 0,
+  lastCustomLimits: {},
 };
 
 export function isTargetId(value: unknown): value is TargetId {
@@ -184,6 +191,7 @@ export function normalizeSettings(value: unknown): TargetCopySettings {
     lastTarget,
     targetOrder,
     targetPreferences: normalizeTargetPreferences(loaded.targetPreferences),
+    lastCustomLimits: normalizeCustomLimits(loaded),
     includeTitle: validBoolean(loaded.includeTitle, DEFAULT_SETTINGS.includeTitle),
     stripFrontmatter: validBoolean(
       loaded.stripFrontmatter,
@@ -232,6 +240,20 @@ function normalizeTargetPreferences(value: unknown): TargetCopySettings["targetP
       preferences.internalLinkMode = saved.internalLinkMode as InternalLinkMode;
     }
     result[target] = preferences;
+  }
+  return result;
+}
+
+function normalizeCustomLimits(loaded: Record<string, unknown>): TargetCopySettings["lastCustomLimits"] {
+  const saved = isRecord(loaded.lastCustomLimits) ? loaded.lastCustomLimits : {};
+  const result: TargetCopySettings["lastCustomLimits"] = {};
+  for (const key of Object.keys(LIMIT_MAXIMUMS) as LimitKey[]) {
+    const current = loaded[key];
+    const value = typeof current === "number" && current > 0 ? current : saved[key];
+    if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) continue;
+    const count = key === "maxEmbedCount" || key === "maxEmbedDepth";
+    if (count && !Number.isInteger(value)) continue;
+    result[key] = Math.min(LIMIT_MAXIMUMS[key], value);
   }
   return result;
 }

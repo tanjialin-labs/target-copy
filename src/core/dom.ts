@@ -1,7 +1,9 @@
 import { normalizeFootnotes } from "./footnotes";
-import { parseSrcset } from "./srcset";
+import { parseSrcset, serializeSrcset } from "./srcset";
 import type { ConversionContext } from "../types";
 import { createDetachedEl } from "./dom-context";
+import { imageMetadataPath } from "./image-paths";
+import { resolveLanguage, t } from "../i18n";
 
 const REMOVE_SELECTORS = [
   "script",
@@ -32,7 +34,7 @@ const SAFE_IMAGE_DATA_URL = /^data:image\/(?:avif|bmp|gif|jpe?g|png|svg\+xml|web
 export function normalizeRenderedDom(
   root: HTMLElement,
   context: ConversionContext,
-): void {
+): string[] {
   preserveExecutableSource(root);
   root.querySelectorAll("style").forEach((element) => {
     if (!element.closest("svg")) element.remove();
@@ -45,10 +47,10 @@ export function normalizeRenderedDom(
   normalizeFootnotes(root);
   normalizeTags(root);
   normalizeInternalLinks(root, context);
-  restoreTextImageReferences(root, context);
+  const warnings = restoreTextImageReferences(root, context);
   normalizeResponsiveImages(root);
   removeUnsafeContent(root);
-
+  return warnings;
 }
 
 export function normalizeResponsiveImages(root: HTMLElement): void {
@@ -65,15 +67,42 @@ export function normalizeResponsiveImages(root: HTMLElement): void {
 function restoreTextImageReferences(
   root: HTMLElement,
   context: ConversionContext,
-): void {
-  if (context.target !== "markdown" && context.target !== "plain-text") return;
+): string[] {
+  const warnings: string[] = [];
+  if (context.target !== "markdown" && context.target !== "plain-text") return warnings;
+  const language = resolveLanguage(context.settings.language);
+  const isLocal = (value: string) => /^(?:app|blob|file):/i.test(value);
+  const restore = (element: Element, value: string, useMetadata: boolean) =>
+    context.resolveImagePath ? context.resolveImagePath(element, value, useMetadata)
+      : useMetadata ? imageMetadataPath(element) : null;
+  const report = (element: Element) => {
+    const name = element.getAttribute("alt") || t(language, "diagramLabel");
+    warnings.push(t(language, "imageReferenceWarning", { name }));
+  };
+  for (const element of root.querySelectorAll("img[srcset], picture > source[srcset]")) {
+    const candidates = parseSrcset(element.getAttribute("srcset") || "").flatMap(candidate => {
+      if (!isLocal(candidate.url)) return [candidate];
+      const path = restore(element, candidate.url, false);
+      if (path) return [{ ...candidate, url: path }];
+      report(element);
+      return [];
+    });
+    if (candidates.length) element.setAttribute("srcset", serializeSrcset(candidates));
+    else element.removeAttribute("srcset");
+  }
   root.querySelectorAll<HTMLImageElement>("img").forEach((image) => {
     const source = image.getAttribute("src") || "";
-    if (!/^(?:app|blob|file):/i.test(source)) return;
-    const portablePath = image.getAttribute("data-path") || image.getAttribute("data-src") || "";
-    if (!portablePath || /^[a-z][a-z\d+.-]*:/i.test(portablePath)) return;
-    image.setAttribute("src", portablePath);
+    if (!isLocal(source)) return;
+    const path = restore(image, source, true);
+    if (path) image.setAttribute("src", path);
+    else {
+      report(image);
+      const placeholder = createDetachedEl(image.ownerDocument, "span");
+      placeholder.textContent = `[${image.alt || t(language, "diagramLabel")}]`;
+      image.replaceWith(placeholder);
+    }
   });
+  return warnings;
 }
 
 function normalizeTags(root: HTMLElement): void {

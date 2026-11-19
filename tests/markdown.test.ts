@@ -20,6 +20,14 @@ Visible %%hidden%% text.`,
 };
 
 describe("prepareMarkdown", () => {
+  it.each(["_draft_", "# Title", "[[Note]]", "%%comment%%", "==highlight==", "<b>Title</b>", "A &copy; B"])(
+    "treats the filename %s as literal title text", title => {
+      const result = prepareMarkdown({ ...input, title, markdown: "Body" }, { ...DEFAULT_SETTINGS, includeTitle: true });
+      const heading = result.split("\n")[0]!;
+      expect(heading.replace(/^# /, "").replace(/\\(.)/g, "$1")).toBe(title);
+      expect(toPortableMarkdown(result, DEFAULT_SETTINGS)).toBe(result);
+    },
+  );
   it("keeps properties at the start when adding a title", () => {
     const source = prepareMarkdown(input, { ...DEFAULT_SETTINGS, includeTitle: true });
     expect(source).toMatch(/^---\ntags: \[private\]\n---\n# Example note/);

@@ -118,6 +118,16 @@ describe("reading selections", () => {
 });
 
 describe("source boundaries", () => {
+  it("retains and escapes link titles without changing their text", () => {
+    const root = dom('<p><a href="https://example.com">Guide</a></p>');
+    const link = root.querySelector("a")!;
+    link.title = 'A "quote" &copy; \\folder\nsecond line';
+    expect(domToMarkdown(root)).toBe('[Guide](https://example.com "A &quot;quote&quot; &amp;copy; \\\\folder&#10;second line")');
+    link.title = "";
+    expect(domToMarkdown(root)).toBe('[Guide](https://example.com "")');
+    link.removeAttribute("title");
+    expect(domToMarkdown(root)).toBe('[Guide](https://example.com)');
+  });
   it("retains highlights independently of bold and protects inline code", () => {
     expect(toPortableMarkdown('==highlighted `code` and **bold**==', DEFAULT_SETTINGS))
       .toBe('<mark>highlighted `code` and **bold**</mark>');

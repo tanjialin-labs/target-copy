@@ -41,11 +41,20 @@ Die Anzahl und Verschachtelungstiefe eingebetteter Notizen sind mit `0` standard
 unbegrenzt. Zirkuläre oder nicht auflösbare Verweise bleiben in der Ausgabe stehen
 und erscheinen in den Kopierdetails.
 
+Individuelle Zielvorgaben sind gekennzeichnet und lassen sich mit einer Schaltfläche
+auf die allgemeinen Einstellungen zurücksetzen. Limits prüfen Eingaben sofort,
+zeigen den Speicherstatus und merken sich den letzten Wert beim Wechsel zu
+unbegrenzt und zurück. Der Eingabefokus bleibt beim Speichern erhalten.
+
 Bei einer Editorauswahl werden benötigte Referenzlink- und Fußnotendefinitionen
 übernommen. Originalquelltext kopiert den ausgewählten Text exakt.
 Längere Umwandlungen können per Schaltfläche oder Befehl abgebrochen werden.
 Die Kopierdetails zeigen sämtliche Kompatibilitätshinweise des letzten erfolgreichen
 Kopiervorgangs. Fortschritts- und Kompatibilitätsmeldungen lassen sich getrennt einstellen.
+Die Details zeigen außerdem Quelldatei, tatsächliches Zwischenablageformat, Dauer
+sowie beibehaltene und eingebettete Bilder. Diese Zahlen beschreiben den kopierten
+Inhalt; die Darstellung bestimmt die Ziel-App. Beim direkten Kopieren von Quelltext
+bleiben Bildverweise erhalten, ohne gezählt zu werden.
 
 ## Manuell installieren
 

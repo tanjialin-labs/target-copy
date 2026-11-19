@@ -13,6 +13,7 @@ function pngData(bytes: number): string {
 describe("embedded image budget", () => {
   it("calculates base64 payload bytes without allocating a decoded copy", () => {
     expect(dataUrlByteLength(pngData(1024))).toBe(1024);
+    expect(dataUrlByteLength(pngData(1024) + "#view")).toBe(1024);
   });
 
   it("replaces an individual oversized data image with visible text", async () => {

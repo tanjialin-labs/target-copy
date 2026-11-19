@@ -7,6 +7,7 @@ export interface SourceSegment {
   unclosed?: boolean;
   reference?: string;
   title?: string;
+  block?: boolean;
 }
 
 /** Shared lexical boundaries for transformations that must leave source intact. */
@@ -14,6 +15,7 @@ export function sourceSegments(source: string): SourceSegment[] {
   const result: SourceSegment[] = [];
   let textStart = 0;
   let index = 0;
+  const containers = new SourceContainers();
   const push = (segment: SourceSegment, end: number) => {
     if (textStart < index) result.push({ kind: "text", value: source.slice(textStart, index) });
     result.push(segment);
@@ -21,10 +23,6 @@ export function sourceSegments(source: string): SourceSegment[] {
     textStart = end;
   };
   while (index < source.length) {
-    if (source.startsWith("![", index) && !source.startsWith("![[", index) && !isEscaped(source, index)) {
-      const image = readImage(source, index);
-      if (image) { push(image.segment, image.end); continue; }
-    }
     if (index === 0) {
       const frontmatter = source.match(/^\uFEFF?---[\t ]*\r?\n[\s\S]*?\r?\n(?:---|\.\.\.)[\t ]*(?:\r?\n|$)/)?.[0];
       if (frontmatter) { push({ kind: "code", value: frontmatter }, frontmatter.length); continue; }
@@ -32,8 +30,9 @@ export function sourceSegments(source: string): SourceSegment[] {
     if (index === 0 || source[index - 1] === "\n") {
       const lineEnd = endOfLine(source, index);
       const line = source.slice(index, lineEnd);
+      const indentedCode = containers.startLine(line);
       const opening = line.match(/^([ \t]*(?:>[ \t]?)*[ \t]*(?:(?:[-+*]|\d+[.)])[ \t]+)?)(`{3,}|~{3,})([^\n]*)/);
-      if (opening && !(opening[2]![0] === "`" && opening[3]!.includes("`"))) {
+      if (!indentedCode && opening && !(opening[2]![0] === "`" && opening[3]!.includes("`"))) {
         const prefix = opening[1]!;
         const marker = opening[2]!;
         const quotePrefix = prefix.match(/^[ \t]*(?:>[ \t]?)+/)?.[0] ?? "";
@@ -62,17 +61,21 @@ export function sourceSegments(source: string): SourceSegment[] {
           info: opening[3]!.trim(), prefix, unclosed: !closed }, cursor);
         continue;
       }
-      if (/^(?: {4}|\t)/.test(line)) {
+      if (indentedCode) {
         let cursor = lineEnd;
         while (cursor < source.length) {
           const end = endOfLine(source, cursor);
           const next = source.slice(cursor, end);
-          if (next.trim() && !/^(?: {4}|\t)/.test(next)) break;
+          if (!containers.continuesCode(next)) break;
           cursor = end;
         }
-        push({ kind: "code", value: source.slice(index, cursor) }, cursor);
+        push({ kind: "code", value: source.slice(index, cursor), block: true }, cursor);
         continue;
       }
+    }
+    if (source.startsWith("![", index) && !source.startsWith("![[", index) && !isEscaped(source, index)) {
+      const image = readImage(source, index);
+      if (image) { push(image.segment, image.end); continue; }
     }
     if (source.startsWith("%%", index)) {
       const closing = source.indexOf("%%", index + 2);
@@ -127,6 +130,73 @@ export function sourceSegments(source: string): SourceSegment[] {
   }
   if (textStart < source.length) result.push({ kind: "text", value: source.slice(textStart) });
   return result;
+}
+
+/** Container indentation belongs to lists and quotes, not to their code blocks. */
+class SourceContainers {
+  // Positive widths are list-item padding; zero denotes a blockquote marker.
+  private readonly widths: number[] = [];
+
+  startLine(raw: string): boolean {
+    const line = expandTabs(raw);
+    if (!line.trim()) return false;
+    const { offset, matched } = this.prefix(line);
+    this.widths.length = matched;
+    let rest = line.slice(offset);
+    while (rest.trim()) {
+      const quote = rest.match(/^ {0,3}> ?/);
+      if (quote) {
+        this.widths.push(0);
+        rest = rest.slice(quote[0].length);
+        continue;
+      }
+      if (/^ {0,3}(?:(?:- *){3,}|(?:\* *){3,}|(?:_ *){3,})\s*$/.test(rest)) break;
+      const item = rest.match(/^( {0,3})(?:[-+*]|\d{1,9}[.)])( +|(?=\r?\n|$))/);
+      if (!item) break;
+      const padding = item[2]!.length;
+      const width = item[0].length - padding + (padding >= 1 && padding <= 4 ? padding : 1);
+      this.widths.push(width);
+      rest = rest.slice(width);
+    }
+    return /^ {4}/.test(rest) && Boolean(rest.trim());
+  }
+
+  continuesCode(raw: string): boolean {
+    const line = expandTabs(raw);
+    if (!line.trim()) return true;
+    const { offset, matched } = this.prefix(line);
+    return matched === this.widths.length && (/^ {4}/.test(line.slice(offset)) || !line.slice(offset).trim());
+  }
+
+  private prefix(line: string): { offset: number; matched: number } {
+    let offset = 0;
+    let matched = 0;
+    for (const width of this.widths) {
+      const rest = line.slice(offset);
+      if (!rest.trim()) return { offset: line.length, matched: this.widths.length };
+      if (width === 0) {
+        const quote = rest.match(/^ {0,3}> ?/);
+        if (!quote) break;
+        offset += quote[0].length;
+      } else {
+        if (!rest.startsWith(" ".repeat(width))) break;
+        offset += width;
+      }
+      matched += 1;
+    }
+    return { offset, matched };
+  }
+}
+
+function expandTabs(line: string): string {
+  let column = 0;
+  return line.split("\t").map((part, index, parts) => {
+    column += part.length;
+    if (index === parts.length - 1) return part;
+    const padding = 4 - column % 4;
+    column += padding;
+    return part + " ".repeat(padding);
+  }).join("");
 }
 
 function readImage(source: string, start: number): { segment: SourceSegment; end: number } | null {
@@ -184,7 +254,7 @@ export function transformWithSourcePlaceholders(source: string, transform: (valu
   const values: Array<{ token: string; value: string }> = [];
   const masked = sourceSegments(source).map((segment) => {
     if (segment.kind === "text") return segment.value;
-    const block = segment.kind === "fence" ||
+    const block = segment.block || segment.kind === "fence" ||
       (segment.kind === "code" && /^(?: {4}|\t|\uFEFF?---)/.test(segment.value)) ||
       (segment.kind === "math" && segment.value.startsWith("$$") && !segment.prefix?.trim()) ||
       (segment.kind === "html" && /^<(?:pre|table|div|p|section|svg|style|script)\b/i.test(segment.value));

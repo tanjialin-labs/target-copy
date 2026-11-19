@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.4 - 2026-11-20
+
+### English
+
+- Portable Markdown applies comment removal, internal-link conversion, and highlighting inside nested lists while preserving actual code blocks.
+- Local images with URL-encoded filenames embed correctly. Reading view image selections retain usable Markdown references; unavailable references show a notice and a placeholder instead of a machine path.
+- Included note titles retain literal filename characters. Links copied from HTML or Reading view to Markdown retain their title text.
+- Rapid destination reordering retains every move. Settings saves run in order, report failures, and preserve input focus.
+- Destinations show when they have individual preferences and offer a one-click reset to general settings.
+- Advanced limits validate input immediately, show save status, and remember the last custom value when switching to unlimited and back.
+- Last copy details include the source file, actual clipboard format, copy time, and retained/embedded image counts. Direct source copies retain image references without counting them.
+
+### 中文
+
+- Portable Markdown 会正确处理嵌套列表中的注释移除、内部链接和高亮，同时保留真正的代码块。
+- 含 URL 编码文件名的本地图片可正确内嵌；阅读视图中的图片选区可保留为 Markdown 引用。无法恢复的引用会提供提示和占位文字，不再输出本机路径。
+- 包含笔记标题时保留文件名的字面字符；HTML 或阅读视图转 Markdown 时保留链接的标题说明。
+- 连续调整目标顺序时保留每次移动。设置按顺序保存，失败时明确提示，并保留输入焦点。
+- 目标旁显示独立设置标记，并可一键恢复继承全局设置。
+- 高级限制即时校验输入、显示保存状态；切换“不限”和“自定义”时记住上次设置的数值。
+- “上次复制详情”显示源文件、实际剪贴板格式、耗时，以及图片引用保留数和内嵌数。直接复制源码时保留图片引用，不统计数量。
+
 ## 1.0.3 - 2026-11-17
 
 - Plain-text copies, including the text supplied with rich copies, keep nested lists and the paragraphs that follow them in their original order.

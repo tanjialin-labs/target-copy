@@ -14,6 +14,12 @@ const converter = new TargetConverter(app as never);
 const input: CopyInput = { markdown: "", title: "Fixture", sourcePath: "Fixture.md", isSelection: true };
 
 describe("source and format boundaries", () => {
+  it("reports retained and embedded images after applying image limits", async () => {
+    const small = "data:image/png;base64,AA==";
+    const large = "data:image/png;base64," + "A".repeat(4000);
+    const result = await converter.convert({ ...input, renderedHtml: `<img src="${small}"><img src="${large}"><img src="https://example.com/picture.png">` }, "html-source", { ...DEFAULT_SETTINGS, maxImageSizeMb: 0.001 });
+    expect(result.images).toEqual({ total: 3, included: 2, embedded: 1 });
+  });
   it("copies original whitespace and frontmatter independently of transformation settings", async () => {
     const source = "  \r\n---\r\nx: 1\r\n---\r\n%% hidden %%\r\n    [[Note]]\r\n";
     const result = await converter.convert({ ...input, markdown: source }, "original-source", {

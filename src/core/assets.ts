@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import type { App } from "obsidian";
 
 import { t } from "../i18n";
 import type { UiLanguage } from "../types";
@@ -7,6 +7,7 @@ import { getElementSourcePath } from "./source-context";
 import { parseSrcset, serializeSrcset } from "./srcset";
 import { abortable } from "./cancellation";
 import { createDetachedEl } from "./dom-context";
+import { resolveLocalImage } from "./image-paths";
 
 const MIME_TYPES: Record<string, string> = {
   avif: "image/avif",
@@ -53,11 +54,12 @@ export async function inlineLocalImages(
     if (!src || /^(?:data:|https?:|blob:)/i.test(src)) continue;
 
     const contextualSourcePath = getElementSourcePath(app, owners.get(image) || image, sourcePath);
-    const file = resolveImageFile(app, image, contextualSourcePath);
-    if (!file) {
+    const resolved = resolveLocalImage(app, image, contextualSourcePath);
+    if (!resolved) {
       warnings.push(t(language, "imageResolveWarning", { name: image.alt || src }));
       continue;
     }
+    const { file, fragment } = resolved;
 
     const maxBytes = maxSizeMb === 0
       ? Number.POSITIVE_INFINITY
@@ -98,8 +100,8 @@ export async function inlineLocalImages(
       }
       const dataUrl = await abortable(pending, signal);
       signal?.throwIfAborted();
-      image.setAttribute("src", dataUrl);
-      commit.get(image)?.(dataUrl);
+      image.setAttribute("src", dataUrl + fragment);
+      commit.get(image)?.(dataUrl + fragment);
       image.removeAttribute("data-path");
       image.removeAttribute("data-src");
       embeddedBytes += file.stat.size;
@@ -113,55 +115,6 @@ export async function inlineLocalImages(
     element.setAttribute("srcset", serializeSrcset(candidates));
   }
   return warnings;
-}
-
-function resolveImageFile(
-  app: App,
-  image: HTMLImageElement,
-  sourcePath: string,
-): TFile | null {
-  const src = image.getAttribute("src") || "";
-  const candidates = new Set<string>();
-
-  for (const candidate of [
-    image.getAttribute("data-path"),
-    image.getAttribute("data-src"),
-    image.closest(".image-embed[src]")?.getAttribute("src"),
-    vaultRelativePath(app, src),
-    src,
-    safePathname(src),
-  ]) {
-    if (candidate) candidates.add(candidate);
-  }
-
-  for (const candidate of candidates) {
-    const cleanCandidate = candidate.split("?")[0]?.replace(/^\/+/, "");
-    if (!cleanCandidate) continue;
-
-    const linked = app.metadataCache.getFirstLinkpathDest(cleanCandidate, sourcePath);
-    if (linked) return linked;
-
-    const direct = app.vault.getAbstractFileByPath(cleanCandidate);
-    if (direct instanceof TFile) return direct;
-  }
-
-  return null;
-}
-
-function vaultRelativePath(app: App, src: string): string | null {
-  const adapter = app.vault.adapter as { getBasePath?: () => string } | undefined;
-  const base = adapter?.getBasePath?.().replace(/\\/g, "/").replace(/\/$/, "");
-  const path = safePathname(src)?.replace(/\\/g, "/");
-  if (!base || !path) return null;
-  return path.startsWith(`${base}/`) ? path.slice(base.length + 1) : null;
-}
-
-function safePathname(value: string): string | null {
-  try {
-    return decodeURIComponent(new URL(value).pathname);
-  } catch {
-    return null;
-  }
 }
 
 function formatMegabytes(value: number): string {

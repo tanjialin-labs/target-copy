@@ -3,7 +3,7 @@ export function dataUrlByteLength(value: string): number {
   if (comma < 0) return 0;
 
   const metadata = value.slice(0, comma);
-  const payload = value.slice(comma + 1);
+  const payload = value.slice(comma + 1).split("#", 1)[0]!;
   if (/;base64(?:;|$)/i.test(metadata)) {
     const normalized = payload.replace(/\s/g, "");
     const padding = normalized.endsWith("==") ? 2 : normalized.endsWith("=") ? 1 : 0;

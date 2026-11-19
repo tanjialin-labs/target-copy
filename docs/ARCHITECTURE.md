@@ -28,7 +28,7 @@ editor, reading selection, or note
 
 - **src/core/input.ts**: reads the active selection or note as conversion input.
 - **src/core/references.ts**: collects reference-link and footnote definitions used by editor selections and note fragments.
-- **src/core/source.ts**: shared lexical boundaries for code, HTML, math, and comments.
+- **src/core/source.ts**: shared lexical boundaries for code, HTML, math, and comments, with list and quote container indentation.
 - **src/core/markdown.ts**: opt-in cleanup and hidden-source preservation.
 - **src/core/diagrams.ts**: shields every fenced block from postprocessor execution.
 - **src/core/math.ts**: retains editable LaTeX when source is available.
@@ -36,6 +36,7 @@ editor, reading selection, or note
 - **src/core/render-note.ts**: resolves local transclusions with per-copy caching, cycle detection, and optional expansion limits.
 - **src/core/dom.ts**: keeps safe source structure and makes executable content inert.
 - **src/core/assets.ts**: embeds referenced local images with their original bytes.
+- **src/core/image-paths.ts**: shared Vault image resolution, URL decoding, and portable references for source and rendered input.
 - **src/core/visuals.ts**: preserves SVG and Canvas markup.
 - **src/core/converter.ts**: orchestrates the pipeline.
 - **src/core/clipboard.ts**: writes rich and plain clipboard representations.
@@ -79,8 +80,12 @@ expanding cached notes. Circular references preserve their source and produce a
 compatibility notice.
 
 Destination preferences inherit general settings unless explicitly overridden.
-The copy-details view retains destination, scope, and compatibility notices for
-the latest successful copy in memory. Its lifetime follows the plugin instance.
+Settings snapshots are saved in order. Custom limit values are retained separately
+when a limit is disabled, and settings renders preserve the focused control.
+The copy-details view retains destination, scope, source file, actual clipboard
+format, duration, image counts, and compatibility notices for the latest successful
+copy in memory. Direct source paths do not count images. Its lifetime follows the
+plugin instance.
 
 ## Dependencies and paths
 
@@ -89,6 +94,5 @@ repository-relative paths. Runtime Vault files are resolved dynamically through
 the Obsidian API.
 
 The production bundle keeps Obsidian and Electron host APIs external. Clipboard
-writing uses the browser API, the available desktop host bridge, and a document
-copy event as compatibility paths.
+writing uses the browser API and the available desktop host bridge.
 See [DEPENDENCIES.md](DEPENDENCIES.md) for the dependency and license boundary.

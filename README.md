@@ -123,6 +123,10 @@ In **Settings → Target Copy**, choose the Quick Copy destination at the top. I
 them, or open the gear beside an enabled target to set its title, links, and image
 preferences. Inherited options show the current general value. **Advanced settings**
 contains optional limits for embedded images and note expansion. Limits default to unlimited.
+Destinations with individual preferences are marked **Customized**; the reset button
+restores general settings for that destination. Limits validate input immediately,
+show save status, and remember the previous custom value when switching back from
+unlimited. Settings retain input focus while saving.
 
 Editor selections include the reference-link and footnote definitions they use.
 Original source remains an exact copy of the selected text.
@@ -130,6 +134,10 @@ Original source remains an exact copy of the selected text.
 Long-running conversions offer a **Cancel copy** button and command. The
 **Last copy details** command shows all compatibility notices from the latest
 successful copy. Copy-progress and compatibility notifications have separate settings.
+Details also show the source file, actual clipboard format, elapsed time, and how
+many image references were retained and embedded. These counts describe the copied
+content; destination apps still control image display. Direct source copies retain
+image references without counting them.
 
 ## Local processing
 

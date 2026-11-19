@@ -245,7 +245,7 @@ function escapeBrackets(value: string): string {
 }
 
 function escapeHeading(value: string): string {
-  return value.replace(/\r?\n/g, " ").replace(/^#+\s*/, "").trim();
+  return value.replace(/\r?\n/g, " ").trim().replace(/([!"#$%&'()*+,\-./:;<=>?@[\\\]^_`{|}~])/g, "\\$1");
 }
 
 function capitalize(value: string): string {

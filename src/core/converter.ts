@@ -34,6 +34,7 @@ import type { RenderSession } from "./render";
 import { getElementSourcePath } from "./source-context";
 import { materializeImageDimensions, processRenderedVisuals } from "./visuals";
 import { getTarget, settingsForTarget } from "../types";
+import { portableImagePath, resolveLocalImage } from "./image-paths";
 
 export class TargetConverter {
   constructor(private readonly app: App) {}
@@ -68,6 +69,11 @@ export class TargetConverter {
       resolveInternalLink,
       getSourcePathForElement: (element) =>
         getElementSourcePath(this.app, element, input.sourcePath),
+      resolveImagePath: (element, src, useMetadata) => {
+        const resolved = resolveLocalImage(this.app, element,
+          getElementSourcePath(this.app, element, input.sourcePath), src, useMetadata);
+        return resolved ? portableImagePath(resolved.file.path, input.sourcePath, resolved.fragment) : null;
+      },
     };
 
     if (target === "markdown" && input.renderedHtml === undefined && input.sourceFormat !== "html") {
@@ -92,6 +98,7 @@ export class TargetConverter {
         { language, maxDepth: settings.maxEmbedDepth });
 
     try {
+      const totalImages = renderSession.root.querySelectorAll("img").length;
       if (input.sourceFormat === "html" && !input.isSelection && settings.includeTitle && input.title) {
         const heading = createDetachedEl(renderSession.root.ownerDocument, "h1");
         heading.textContent = input.title;
@@ -122,7 +129,7 @@ export class TargetConverter {
       if (targetDefinition.richText) {
         await materializeImageDimensions(renderSession.root);
       }
-      normalizeRenderedDom(renderSession.root, context);
+      warnings.push(...normalizeRenderedDom(renderSession.root, context));
       signal?.throwIfAborted();
       const visuals = await processRenderedVisuals(
         renderSession.root,
@@ -143,6 +150,10 @@ export class TargetConverter {
         unique(warnings),
       );
       result.warnings = unique(result.warnings);
+      const images = [...renderSession.root.querySelectorAll("img")].filter(image =>
+        image.getAttribute("src") || image.getAttribute("srcset") || image.closest("picture")?.querySelector("source[srcset]"));
+      result.images = { total: totalImages, included: images.length,
+        embedded: images.filter(image => /^data:image\//i.test(image.getAttribute("src") || "")).length };
       return result;
     } finally {
       renderSession.dispose();

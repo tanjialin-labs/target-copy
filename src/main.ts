@@ -31,6 +31,10 @@ interface CopyDetails {
   target: TargetId;
   isSelection: boolean;
   warnings: string[];
+  sourcePath: string;
+  richTextWritten: boolean;
+  elapsedMs: number;
+  images?: { total: number; included: number; embedded: number };
 }
 
 export default class TargetCopyPlugin extends Plugin {
@@ -43,6 +47,7 @@ export default class TargetCopyPlugin extends Plugin {
   private ribbonIcon?: HTMLElement;
   private writingConversion: AbortController | undefined;
   private lastCopyDetails: CopyDetails | undefined;
+  private settingsWrites: Promise<void> = Promise.resolve();
 
   async onload(): Promise<void> {
     await this.loadSettings();
@@ -82,7 +87,10 @@ export default class TargetCopyPlugin extends Plugin {
   }
 
   async saveSettings(): Promise<void> {
-    await this.saveData(this.settings);
+    const snapshot = normalizeSettings(this.settings);
+    const pending = this.settingsWrites.then(() => this.saveData(snapshot));
+    this.settingsWrites = pending.catch(() => undefined);
+    await pending;
   }
 
   getUiLanguage(): UiLanguage {
@@ -250,6 +258,7 @@ export default class TargetCopyPlugin extends Plugin {
     const settings = normalizeSettings(this.settings);
     const sequence = ++this.copySequence;
     const ownerWindow = getActiveWindow();
+    const started = ownerWindow.performance.now();
     const language = this.getUiLanguage();
     const target = getTarget(targetId);
     const targetLabel = targetText(language, target.id).label;
@@ -312,7 +321,11 @@ export default class TargetCopyPlugin extends Plugin {
         result.warnings.push(t(language, "textRepresentation"));
       }
       this.settings.lastTarget = targetId;
-      this.lastCopyDetails = { target: targetId, isSelection: input.isSelection, warnings: [...result.warnings] };
+      this.lastCopyDetails = { target: targetId, isSelection: input.isSelection, warnings: [...result.warnings],
+        sourcePath: input.sourcePath, richTextWritten: clipboardResult.richTextWritten,
+        elapsedMs: Math.round(ownerWindow.performance.now() - started),
+        ...(result.images ? { images: { ...result.images } } : {}),
+      };
       const details = this.lastCopyDetails;
       await this.saveSettings().catch(() => undefined);
       if (sequence !== this.copySequence) return;
@@ -437,6 +450,17 @@ class CopyDetailsModal extends Modal {
     this.contentEl.addClass("target-copy-details");
     if (!this.details) { this.contentEl.createEl("p", { text: t(language, "noCopyDetails") }); return; }
     this.contentEl.createEl("p", { text: `${targetText(language, this.details.target).label} · ${t(language, this.details.isSelection ? "copyScopeSelection" : "copyScopeNote")}` });
+    const facts = this.contentEl.createEl("dl", { cls: "target-copy-details__facts" });
+    const fact = (label: string, value: string) => {
+      facts.createEl("dt", { text: label });
+      facts.createEl("dd", { text: value });
+    };
+    fact(t(language, "detailsSource"), this.details.sourcePath);
+    fact(t(language, "detailsFormat"), t(language, this.details.richTextWritten ? "copyOutputRich" : "copyOutputText"));
+    fact(t(language, "detailsDuration"), `${this.details.elapsedMs} ms`);
+    fact(t(language, "detailsImages"), this.details.images
+      ? t(language, "detailsImageCounts", { ...this.details.images })
+      : t(language, "detailsImageSource"));
     if (!this.details.warnings.length) this.contentEl.createEl("p", { text: t(language, "noCompatibilityIssues") });
     else {
       const list = this.contentEl.createEl("ul");

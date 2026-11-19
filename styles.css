@@ -90,3 +90,32 @@
   padding-inline-start: var(--size-4-3);
   border-inline-start: 2px solid var(--background-modifier-border);
 }
+
+.target-copy-override-badge {
+  color: var(--text-accent);
+  font-size: var(--font-ui-smaller);
+  margin-inline-start: var(--size-4-2);
+  white-space: nowrap;
+}
+
+.target-copy-setting-status {
+  margin-top: var(--size-4-1);
+}
+
+.target-copy-setting-status.is-error {
+  color: var(--text-error);
+}
+
+.target-copy-details__facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--size-4-2) var(--size-4-4);
+}
+
+.target-copy-details__facts dt {
+  color: var(--text-muted);
+}
+
+.target-copy-details__facts dd {
+  margin: 0;
+}
